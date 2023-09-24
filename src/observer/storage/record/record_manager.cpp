@@ -486,6 +486,7 @@ RC RecordFileHandler::visit_record(const RID &rid, bool readonly, std::function<
   return rc;
 }
 
+
 ////////////////////////////////////////////////////////////////////////////////
 
 RecordFileScanner::~RecordFileScanner() { close_scan(); }

@@ -20,6 +20,11 @@ BplusTreeIndex::~BplusTreeIndex() noexcept
   close();
 }
 
+RC BplusTreeIndex::drop()
+{
+  
+}
+
 RC BplusTreeIndex::create(const char *file_name, const IndexMeta &index_meta, const FieldMeta &field_meta)
 {
   if (inited_) {

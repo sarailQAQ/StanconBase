@@ -325,3 +325,4 @@ void TableMeta::desc(std::ostream &os) const
   }
   os << ')' << std::endl;
 }
+void TableMeta::drop() {}

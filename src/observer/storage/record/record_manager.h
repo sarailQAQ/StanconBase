@@ -305,6 +305,8 @@ public:
    */
   RC visit_record(const RID &rid, bool readonly, std::function<void(Record &)> visitor);
 
+  RC destory();
+
 private:
   /**
    * @brief 初始化当前没有填满记录的页面，初始化free_pages_成员
