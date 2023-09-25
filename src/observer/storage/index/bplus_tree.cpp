@@ -1644,6 +1644,11 @@ RC BplusTreeHandler::delete_entry(const char *user_key, const RID *rid)
 
   return delete_entry_internal(latch_memo, leaf_frame, key);
 }
+RC BplusTreeHandler::drop() {
+  BufferPoolManager &bpm = BufferPoolManager::instance();
+  RC rc = bpm.remove_file(disk_buffer_pool_->file_name());
+  return rc;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 

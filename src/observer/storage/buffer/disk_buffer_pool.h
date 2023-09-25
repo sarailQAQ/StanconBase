@@ -263,6 +263,8 @@ public:
    */
   RC recover_page(PageNum page_num);
 
+  const char *file_name();
+
 protected:
   RC allocate_frame(PageNum page_num, Frame **buf);
 

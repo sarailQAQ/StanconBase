@@ -513,6 +513,8 @@ public:
    */
   bool validate_tree();
 
+  RC drop();
+
 public:
   /**
    * 这些函数都是线程不安全的，不要在多线程的环境下调用

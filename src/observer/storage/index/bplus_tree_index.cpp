@@ -20,11 +20,6 @@ BplusTreeIndex::~BplusTreeIndex() noexcept
   close();
 }
 
-RC BplusTreeIndex::drop()
-{
-  
-}
-
 RC BplusTreeIndex::create(const char *file_name, const IndexMeta &index_meta, const FieldMeta &field_meta)
 {
   if (inited_) {
@@ -91,6 +86,19 @@ RC BplusTreeIndex::close()
   LOG_INFO("Successfully close index.");
   return RC::SUCCESS;
 }
+
+RC BplusTreeIndex::drop()
+{
+  RC rc = RC::SUCCESS;
+  if (inited_) {
+    LOG_INFO("Begin to drop index, index:%s, field:%s", index_meta_.name(), index_meta_.field());
+    rc = index_handler_.drop();
+    inited_ = false;
+  }
+  LOG_INFO("Successfully drop index.");
+  return rc;
+}
+
 
 RC BplusTreeIndex::insert_entry(const char *record, const RID *rid)
 {

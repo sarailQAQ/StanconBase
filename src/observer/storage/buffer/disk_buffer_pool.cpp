@@ -606,6 +606,7 @@ RC DiskBufferPool::load_page(PageNum page_num, Frame *frame)
 }
 
 int DiskBufferPool::file_desc() const { return file_desc_; }
+const char *DiskBufferPool::file_name() { return file_name_.c_str(); }
 ////////////////////////////////////////////////////////////////////////////////
 BufferPoolManager::BufferPoolManager(int memory_size /* = 0 */)
 {

@@ -174,24 +174,26 @@ RC Table::open(const char *meta_file, const char *base_dir)
   return rc;
 }
 
-RC Table::drop(const char *path)
+RC Table::drop(const char *meta_path,const char *data_path)
 {
   RC rc = RC::SUCCESS;
-  //  删除索引
+  //  删除索引 t.index
   for (Index * index : indexes_) {
-    index->drop(); // TODO
+    index->drop();
   }
   indexes_.clear();
 
+  // 删除 record_handler_
+  record_handler_->destory();
   delete record_handler_;
   record_handler_ = nullptr;
 
-  //  删除 BufferPoolManager 创建的文件
+  //  删除 BufferPoolManager 创建的文件  t.data
   BufferPoolManager &bpm = BufferPoolManager::instance();
-  rc = bpm.remove_file(path);
+  rc = bpm.remove_file(data_path);
 
-  // 删除元数据
-  int remove_ret = ::remove(path);
+  // 删除元数据  t.table
+  int remove_ret = ::remove(meta_path);
 
   return rc;
 }
