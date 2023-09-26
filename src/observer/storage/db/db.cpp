@@ -104,17 +104,15 @@ RC Db::drop_table(const char *table_name)
 {
   RC rc = RC::SUCCESS;
   // check table_name
-
   if (opened_tables_.count(table_name) == 0) {
     LOG_WARN("%s not exist.", table_name);
     return RC::SCHEMA_TABLE_NOT_EXIST;
   }
-  std::string meta_path = table_meta_file(path_.c_str(), table_name);
-  std::string data_path = table_data_file(path_.c_str(), table_name);
+
   // 删除
-  rc = opened_tables_[table_name]->drop(meta_path.c_str(),data_path.c_str());
-  opened_tables_.erase(std::string(table_name));
+  rc = opened_tables_[table_name]->drop(path_.c_str());
   if (rc == RC::SUCCESS) {
+    opened_tables_.erase(std::string(table_name));
     LOG_INFO("Drop table success. table name=%s", table_name);
   } else {
     LOG_WARN("Drop table fail. table name=%s", table_name);

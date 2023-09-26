@@ -57,7 +57,7 @@ public:
   /**
    * 删除一个表
    */
-  RC drop(const char * meta_path,const char * data_path);
+  RC drop(const char * base_path);
   /**
    * 打开一个表
    * @param meta_file 保存表元数据的文件完整路径

@@ -735,7 +735,10 @@ RC BufferPoolManager::close_file(const char *_file_name)
 
 RC BufferPoolManager::remove_file(const char *path) {
   RC rc = close_file(path);
-  int remove_ret = ::remove(path);
+  ::remove(path);
+  if(rc != RC::SUCCESS){
+    LOG_WARN("remove file faild %s", path);
+  }
   return rc;
 }
 

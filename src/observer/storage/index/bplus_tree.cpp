@@ -1647,6 +1647,9 @@ RC BplusTreeHandler::delete_entry(const char *user_key, const RID *rid)
 RC BplusTreeHandler::drop() {
   BufferPoolManager &bpm = BufferPoolManager::instance();
   RC rc = bpm.remove_file(disk_buffer_pool_->file_name());
+  if(rc != RC::SUCCESS){
+    LOG_WARN("index file drop faild %s", disk_buffer_pool_->file_name());
+  }
   return rc;
 }
 

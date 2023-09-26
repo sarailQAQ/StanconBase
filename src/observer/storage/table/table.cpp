@@ -174,9 +174,13 @@ RC Table::open(const char *meta_file, const char *base_dir)
   return rc;
 }
 
-RC Table::drop(const char *meta_path,const char *data_path)
+RC Table::drop(const char *base_path)
 {
   RC rc = RC::SUCCESS;
+
+  std::string meta_path = table_meta_file(base_path, name());
+  std::string data_path = table_data_file(base_path, name());
+
   //  删除索引 t.index
   for (Index * index : indexes_) {
     index->drop();
@@ -190,10 +194,10 @@ RC Table::drop(const char *meta_path,const char *data_path)
 
   //  删除 BufferPoolManager 创建的文件  t.data
   BufferPoolManager &bpm = BufferPoolManager::instance();
-  rc = bpm.remove_file(data_path);
+  rc = bpm.remove_file(data_path.c_str());
 
   // 删除元数据  t.table
-  int remove_ret = ::remove(meta_path);
+  ::remove(meta_path.c_str());
 
   return rc;
 }
