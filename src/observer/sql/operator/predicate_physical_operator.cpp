@@ -37,7 +37,7 @@ RC PredicatePhysicalOperator::next()
 {
   RC rc = RC::SUCCESS;
   PhysicalOperator *oper = children_.front().get();
-
+// 读取下一条数据
   while (RC::SUCCESS == (rc = oper->next())) {
     Tuple *tuple = oper->current_tuple();
     if (nullptr == tuple) {

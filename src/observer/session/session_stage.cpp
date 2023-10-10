@@ -126,24 +126,26 @@ void SessionStage::handle_request(StageEvent *event)
  */
 RC SessionStage::handle_sql(SQLStageEvent *sql_event)
 {
+  // query_cache_stage_ 目前为空
   RC rc = query_cache_stage_.handle_request(sql_event);
   if (OB_FAIL(rc)) {
     LOG_TRACE("failed to do query cache. rc=%s", strrc(rc));
     return rc;
   }
-
+  // 解析sql ，解析出来的sql_node 存在sql_event里给下一个stage
   rc = parse_stage_.handle_request(sql_event);
   if (OB_FAIL(rc)) {
     LOG_TRACE("failed to do parse. rc=%s", strrc(rc));
     return rc;
   }
-//  生成 Stmt
+
+//  校验基本语义（表和字段是否存在，类型是否匹配等），生成 Stmt
   rc = resolve_stage_.handle_request(sql_event);
   if (OB_FAIL(rc)) {
     LOG_TRACE("failed to do resolve. rc=%s", strrc(rc));
     return rc;
   }
-  
+//  TODO 还没看优化
   rc = optimize_stage_.handle_request(sql_event);
   if (rc != RC::UNIMPLENMENT && rc != RC::SUCCESS) {
     LOG_TRACE("failed to do optimize. rc=%s", strrc(rc));

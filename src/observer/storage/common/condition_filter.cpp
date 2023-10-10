@@ -213,6 +213,7 @@ RC CompositeConditionFilter::init(Table &table, const ConditionSqlNode *conditio
 
 bool CompositeConditionFilter::filter(const Record &rec) const
 {
+  // 对于一条数据，一个条件挂掉，就不要这条数据（默认所有条件以and 连接）
   for (int i = 0; i < filter_num_; i++) {
     if (!filters_[i]->filter(rec)) {
       return false;

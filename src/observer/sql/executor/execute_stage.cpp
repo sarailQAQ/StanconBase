@@ -34,6 +34,7 @@ using namespace common;
 RC ExecuteStage::handle_request(SQLStageEvent *sql_event)
 {
   RC rc = RC::SUCCESS;
+//  带执行计划
   const unique_ptr<PhysicalOperator> &physical_operator = sql_event->physical_operator();
   if (physical_operator != nullptr) {
     return handle_request_with_physical_operator(sql_event);
@@ -42,6 +43,7 @@ RC ExecuteStage::handle_request(SQLStageEvent *sql_event)
   SessionEvent *session_event = sql_event->session_event();
 
   Stmt *stmt = sql_event->stmt();
+//  CommandExecutor 可以直接执行的
   if (stmt != nullptr) {
     CommandExecutor command_executor;
     rc = command_executor.execute(sql_event);

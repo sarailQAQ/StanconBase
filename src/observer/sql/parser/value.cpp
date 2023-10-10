@@ -18,8 +18,9 @@ See the Mulan PSL v2 for more details. */
 #include "common/log/log.h"
 #include "common/lang/comparator.h"
 #include "common/lang/string.h"
+#include "common/date.h"
 
-const char *ATTR_TYPE_NAME[] = {"undefined", "chars", "ints", "floats", "booleans"};
+const char *ATTR_TYPE_NAME[] = {"undefined", "chars", "ints", "dates", "floats", "booleans"};
 
 const char *attr_type_to_string(AttrType type)
 {
@@ -38,25 +39,13 @@ AttrType attr_type_from_string(const char *s)
   return UNDEFINED;
 }
 
-Value::Value(int val)
-{
-  set_int(val);
-}
+Value::Value(int val) { set_int(val); }
 
-Value::Value(float val)
-{
-  set_float(val);
-}
+Value::Value(float val) { set_float(val); }
 
-Value::Value(bool val)
-{
-  set_boolean(val);
-}
+Value::Value(bool val) { set_boolean(val); }
 
-Value::Value(const char *s, int len /*= 0*/)
-{
-  set_string(s, len);
-}
+Value::Value(const char *s, int len /*= 0*/) { set_string(s, len); }
 
 void Value::set_data(char *data, int length)
 {
@@ -68,13 +57,18 @@ void Value::set_data(char *data, int length)
       num_value_.int_value_ = *(int *)data;
       length_ = length;
     } break;
+    case DATES: {
+//      num_value_.int_value_ = *(int *)data;
+      string_to_date(data, num_value_.int_value_);
+      length_               = length;
+    } break;
     case FLOATS: {
       num_value_.float_value_ = *(float *)data;
-      length_ = length;
+      length_                 = length;
     } break;
     case BOOLEANS: {
       num_value_.bool_value_ = *(int *)data != 0;
-      length_ = length;
+      length_                = length;
     } break;
     default: {
       LOG_WARN("unknown data type: %d", attr_type_);
@@ -83,22 +77,28 @@ void Value::set_data(char *data, int length)
 }
 void Value::set_int(int val)
 {
-  attr_type_ = INTS;
+  attr_type_            = INTS;
   num_value_.int_value_ = val;
-  length_ = sizeof(val);
+  length_               = sizeof(val);
 }
 
 void Value::set_float(float val)
 {
-  attr_type_ = FLOATS;
+  attr_type_              = FLOATS;
   num_value_.float_value_ = val;
-  length_ = sizeof(val);
+  length_                 = sizeof(val);
+}
+void Value::set_date(int val)
+{
+  attr_type_            = DATES;
+  num_value_.int_value_ = val;
+  length_               = sizeof(val);
 }
 void Value::set_boolean(bool val)
 {
-  attr_type_ = BOOLEANS;
+  attr_type_             = BOOLEANS;
   num_value_.bool_value_ = val;
-  length_ = sizeof(val);
+  length_                = sizeof(val);
 }
 void Value::set_string(const char *s, int len /*= 0*/)
 {
@@ -121,6 +121,15 @@ void Value::set_value(const Value &value)
     case FLOATS: {
       set_float(value.get_float());
     } break;
+    case DATES: {
+      int date = 0;
+      RC  rc   = string_to_date(value.get_string().c_str(), date);
+      if (rc != RC::SUCCESS) {
+        ASSERT(false, "date convert error");
+        return;
+      }
+      set_date(date);
+    }
     case CHARS: {
       set_string(value.get_string().c_str());
     } break;
@@ -138,7 +147,7 @@ const char *Value::data() const
   switch (attr_type_) {
     case CHARS: {
       return str_value_.c_str();
-    } break;
+    }
     default: {
       return (const char *)&num_value_;
     } break;
@@ -150,6 +159,9 @@ std::string Value::to_string() const
   std::stringstream os;
   switch (attr_type_) {
     case INTS: {
+      os << num_value_.int_value_;
+    } break;
+    case DATES: {
       os << num_value_.int_value_;
     } break;
     case FLOATS: {
@@ -172,6 +184,7 @@ int Value::compare(const Value &other) const
 {
   if (this->attr_type_ == other.attr_type_) {
     switch (this->attr_type_) {
+      case DATES:  // 日期和整形本质都是比较数字
       case INTS: {
         return common::compare_int((void *)&this->num_value_.int_value_, (void *)&other.num_value_.int_value_);
       } break;
@@ -191,6 +204,26 @@ int Value::compare(const Value &other) const
         LOG_WARN("unsupported type: %d", this->attr_type_);
       }
     }
+  } else if (this->attr_type_ == DATES && other.attr_type_ == CHARS) {
+    int res = 0;
+    RC  rc  = string_to_date(other.get_string().c_str(), res);
+    if (rc == RC::SUCCESS) {
+      return common::compare_int((void *)&this->num_value_.int_value_, (void *)&res);
+    }
+    LOG_WARN("date convert error: %s", other.get_string().c_str());
+    return -1;
+  } else if (this->attr_type_ == CHARS && other.attr_type_ == DATES) {
+    int res = 0;
+    RC  rc  = string_to_date(this->get_string().c_str(), res);
+    if (rc == RC::SUCCESS) {
+      return common::compare_int((void *)&res, (void *)&other.num_value_.int_value_);
+    }
+    LOG_WARN("date convert error: %s", other.get_string().c_str());
+    return -1;
+  } else if (this->attr_type_ == INTS && other.attr_type_ == DATES) {
+    return common::compare_int((void *)&this->num_value_.int_value_, (void *)&other.num_value_.int_value_);
+  } else if (this->attr_type_ == DATES && other.attr_type_ == INTS) {
+    return common::compare_int((void *)&this->num_value_.int_value_, (void *)&other.num_value_.int_value_);
   } else if (this->attr_type_ == INTS && other.attr_type_ == FLOATS) {
     float this_data = this->num_value_.int_value_;
     return common::compare_float((void *)&this_data, (void *)&other.num_value_.float_value_);
@@ -214,6 +247,9 @@ int Value::get_int() const
       }
     }
     case INTS: {
+      return num_value_.int_value_;
+    }
+    case DATES: {
       return num_value_.int_value_;
     }
     case FLOATS: {
@@ -244,6 +280,9 @@ float Value::get_float() const
     case INTS: {
       return float(num_value_.int_value_);
     } break;
+    case DATES: {
+      return float(num_value_.int_value_);
+    } break;
     case FLOATS: {
       return num_value_.float_value_;
     } break;
@@ -258,10 +297,7 @@ float Value::get_float() const
   return 0;
 }
 
-std::string Value::get_string() const
-{
-  return this->to_string();
-}
+std::string Value::get_string() const { return this->to_string(); }
 
 bool Value::get_boolean() const
 {
@@ -286,6 +322,9 @@ bool Value::get_boolean() const
     } break;
     case INTS: {
       return num_value_.int_value_ != 0;
+    } break;
+    case DATES: {
+      return num_value_.int_value_ >= 19000101 && num_value_.int_value_ <= 99991231;
     } break;
     case FLOATS: {
       float val = num_value_.float_value_;

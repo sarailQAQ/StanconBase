@@ -36,7 +36,7 @@ public:
   }
 
 public:
-  static RC create(Db *db, const InsertSqlNode &insert_sql, Stmt *&stmt);
+  static RC create(Db *db, InsertSqlNode &insert_sql, Stmt *&stmt);
 
 public:
   Table *table() const
@@ -56,4 +56,5 @@ private:
   Table *table_ = nullptr;
   const Value *values_ = nullptr;
   int value_amount_ = 0;
+  static void  value_init_date(const Value *pValue, int num);
 };
