@@ -131,6 +131,7 @@ RC PhysicalPlanGenerator::create_plan(TableGetLogicalOperator &table_get_oper, u
     ASSERT(value_expr != nullptr, "got an index but value expr is null ?");
 
     const Value &value = value_expr->get_value();
+    // 创建范围查找的扫描器，从value到value 相当于等于号
     IndexScanPhysicalOperator *index_scan_oper = new IndexScanPhysicalOperator(
           table, index, table_get_oper.readonly(), 
           &value, true /*left_inclusive*/, 

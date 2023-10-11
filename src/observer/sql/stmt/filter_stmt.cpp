@@ -13,6 +13,7 @@ See the Mulan PSL v2 for more details. */
 //
 
 #include "common/rc.h"
+#include "common/date.h"
 #include "common/log/log.h"
 #include "common/lang/string.h"
 #include "sql/stmt/filter_stmt.h"
@@ -127,6 +128,34 @@ RC FilterStmt::create_filter_unit(Db *db, Table *default_table, std::unordered_m
   filter_unit->set_comp(comp);
 
   // TODO 检查两个类型是否能够比较
-  // TODO DATES 要能和 字符串比较 （能和数字比较）
+
+  // 日期类型特殊处理
+  if(condition.left_is_attr && filter_unit->left().field.attr_type() == DATES && condition.right_value.attr_type() == CHARS){
+    FilterObj filter_obj;
+    int date_num = -1;
+    RC rc = string_to_date(condition.right_value.data(),date_num);
+    if(rc != RC::SUCCESS){
+      LOG_WARN("error date type for %s",condition.right_value.data());
+      return rc;
+    }
+    Value date_value(date_num);
+    date_value.set_type(DATES);
+    filter_obj.init_value(date_value);
+    filter_unit->set_right(filter_obj);
+  }
+  if(condition.right_is_attr && filter_unit->right().field.attr_type() == DATES && condition.left_value.attr_type() == CHARS){
+    FilterObj filter_obj;
+    int date_num = -1;
+    RC rc = string_to_date(condition.left_value.data(),date_num);
+    if(rc != RC::SUCCESS){
+      LOG_WARN("error date type for %s",condition.left_value.data());
+      return rc;
+    }
+    Value date_value(date_num);
+    date_value.set_type(DATES);
+    filter_obj.init_value(date_value);
+    filter_unit->set_left(filter_obj);
+  }
+
   return rc;
 }

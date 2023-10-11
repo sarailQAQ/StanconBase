@@ -35,7 +35,8 @@ inline RC string_to_date(const char *str, int32_t &date)
 // 日期转字符串
 inline std::string date_to_string(int32_t date)
 {
+  //  20230101
   std::stringstream ss;
-  ss << date;
+  ss << date / 10000 << "-" << date % 10000 / 100 << "-" << date % 100;
   return ss.str();
 }

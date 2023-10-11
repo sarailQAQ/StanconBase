@@ -58,8 +58,8 @@ void Value::set_data(char *data, int length)
       length_ = length;
     } break;
     case DATES: {
-//      num_value_.int_value_ = *(int *)data;
-      string_to_date(data, num_value_.int_value_);
+      num_value_.int_value_ = *(int *)data;
+//      string_to_date(data, num_value_.int_value_);
       length_               = length;
     } break;
     case FLOATS: {
@@ -162,7 +162,7 @@ std::string Value::to_string() const
       os << num_value_.int_value_;
     } break;
     case DATES: {
-      os << num_value_.int_value_;
+      os << date_to_string(num_value_.int_value_);
     } break;
     case FLOATS: {
       os << common::double_to_str(num_value_.float_value_);

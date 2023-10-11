@@ -75,7 +75,8 @@ RC InsertStmt::create(Db *db, InsertSqlNode &inserts, Stmt *&stmt)
           table_name, field_meta->name(), field_type, value_type);
         return rc;
       }
-      auto new_date = Value(AttrType::DATES, const_cast<char *>(inserts.values[i].data()));
+      auto new_date = Value(date_num);
+      new_date.set_type(AttrType::DATES);
       inserts.values[i] = new_date;
       continue;
     }
