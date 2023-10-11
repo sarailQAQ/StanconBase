@@ -36,7 +36,10 @@ inline RC string_to_date(const char *str, int32_t &date)
 inline std::string date_to_string(int32_t date)
 {
   //  20230101
+  int               year  = date / 10000;
+  int               month = date % 10000 / 100;
+  int               day   = date % 100;
   std::stringstream ss;
-  ss << date / 10000 << "-" << date % 10000 / 100 << "-" << date % 100;
+  ss << year << "-" << ((month < 10) ? "0" : "") << month << "-" << ((day < 10) ? "0" : "") << day;
   return ss.str();
 }
