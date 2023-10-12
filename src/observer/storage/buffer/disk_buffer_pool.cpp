@@ -65,8 +65,9 @@ int BPFrameManager::purge_frames(int count, std::function<RC(Frame *frame)> purg
   if (count <= 0) {
     count = 1;
   }
+  // 预先分配好 count个空间的数组
   frames_can_purge.reserve(count);
-
+//  自定义的 frame遍历方法，用于找到响应数目的可淘汰的页面
   auto purge_finder = [&frames_can_purge, count](const FrameId &frame_id, Frame *const frame) {
     if (frame->can_purge()) {
       frame->pin();
@@ -77,7 +78,7 @@ int BPFrameManager::purge_frames(int count, std::function<RC(Frame *frame)> purg
     }
     return true;  // true continue to look up
   };
-
+//  执行上述方法
   frames_.foreach_reverse(purge_finder);
   LOG_INFO("purge frames find %ld pages total", frames_can_purge.size());
 
@@ -85,8 +86,10 @@ int BPFrameManager::purge_frames(int count, std::function<RC(Frame *frame)> purg
   /// 他需要把脏页数据刷新到磁盘上去，所以这里会极大地降低并发度
   int freed_count = 0;
   for (Frame *frame : frames_can_purge) {
+//    将所有要淘汰的页面执行上层传入的淘汰方法
     RC rc = purger(frame);
     if (RC::SUCCESS == rc) {
+//      释放内存，待会统一管理frame内存的allocator_ 就能分配内存了
       free_internal(frame->frame_id(), frame);
       freed_count++;
     } else {
@@ -121,11 +124,12 @@ Frame *BPFrameManager::alloc(int file_desc, PageNum page_num)
   FrameId frame_id(file_desc, page_num);
 
   std::lock_guard<std::mutex> lock_guard(lock_);
+//  尝试从缓存找，上层get_internal 已经调用过了，基本上找不到了
   Frame                      *frame = get_internal(frame_id);
   if (frame != nullptr) {
     return frame;
   }
-
+//  分配一点内存
   frame = allocator_.alloc();
   if (frame != nullptr) {
     ASSERT(
@@ -295,6 +299,7 @@ RC DiskBufferPool::get_this_page(PageNum page_num, Frame **frame)
   RC rc  = RC::SUCCESS;
   *frame = nullptr;
 
+  // 看缓存有没有找到，如果找到更新lrk 然后返回成功
   Frame *used_match_frame = frame_manager_.get(file_desc_, page_num);
   if (used_match_frame != nullptr) {
     used_match_frame->access();
@@ -542,15 +547,19 @@ RC DiskBufferPool::recover_page(PageNum page_num)
 
 RC DiskBufferPool::allocate_frame(PageNum page_num, Frame **buffer)
 {
+  // 自定义了一个获取到 frame 后的回调方法
   auto purger = [this](Frame *frame) {
     if (!frame->dirty()) {
       return RC::SUCCESS;
     }
 
+//    如果是脏页就将数据刷到磁盘
     RC rc = RC::SUCCESS;
     if (frame->file_desc() == file_desc_) {
+//      这里不调用 this->flush_page() 是因为上层方法已经上锁了
       rc = this->flush_page_internal(*frame);
     } else {
+//      如果分配到了其他文件里的脏页，就找到这个文件对应的DiskBufferPool 再调用它的flush_page
       rc = bp_manager_.flush_page(*frame);
     }
 
@@ -568,6 +577,7 @@ RC DiskBufferPool::allocate_frame(PageNum page_num, Frame **buffer)
     }
 
     LOG_TRACE("frames are all allocated, so we should purge some frames to get one free frame");
+    // 内存池满了，需要淘汰一个页面，等淘汰完，循环第一句就有内存分配了
     (void)frame_manager_.purge_frames(1 /*count*/, purger);
   }
   return RC::BUFFERPOOL_NOBUF;
