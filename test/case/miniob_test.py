@@ -784,17 +784,17 @@ class TestSuite:
         result = self.run_case(test_case)
 
         if result is Result.true:
-          _logger.info("Case passed: %s", test_case.get_name())
+          _logger.info("Case passed: %s √√√√√√√√√√√√√√√√√√√√√√√√√√√√√√√√", test_case.get_name())
           success_count += 1
           eval_result.append_message("%s is success" % test_case.get_name())
         else: 
 
           if result is Result.false:
-            _logger.info("Case failed: %s", test_case.get_name())
+            _logger.info("Case failed: %s ×××××××××××××××××××××××××××××××", test_case.get_name())
             failure_count += 1
             eval_result.append_message("%s is error" % test_case.get_name())
           else:
-            _logger.info("Case timeout: %s", test_case.get_name())
+            _logger.info("Case timeout: %s <<<<<<<<<<<<<<<<<<<<<<<<<<<", test_case.get_name())
             timeout_count += 1
             eval_result.append_message("%s is timeout" % test_case.get_name())
       except Exception as ex:

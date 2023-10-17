@@ -87,14 +87,9 @@ RC Db::create_table(const char *table_name, int attribute_count, const AttrInfoS
 
   // 文件路径可以移到Table模块
   std::string table_file_path = table_meta_file(path_.c_str(), table_name);
-<<<<<<< HEAD
-  Table      *table           = new Table();
-  rc = table->create(next_table_id_++, table_file_path.c_str(), table_name, path_.c_str(), attribute_count, attributes);
-=======
   Table *table = new Table();
   int32_t table_id = next_table_id_++;
   rc = table->create(table_id, table_file_path.c_str(), table_name, path_.c_str(), attribute_count, attributes);
->>>>>>> 09fe80d885b23450fdb01d7b9276ad0f0b6151c0
   if (rc != RC::SUCCESS) {
     LOG_ERROR("Failed to create table %s.", table_name);
     delete table;
