@@ -23,6 +23,7 @@ See the Mulan PSL v2 for more details. */
 enum AttrType
 {
   UNDEFINED,
+  NULLS,          /// 特殊的数据类型，支持字段为null
   CHARS,          ///< 字符串类型
   INTS,           ///< 整数类型(4字节)
   DATES,         ///< 日期类型(4字节)
@@ -97,6 +98,7 @@ public:
   bool get_boolean() const;
 
 private:
+
   AttrType attr_type_ = UNDEFINED;
   int length_ = 0;
 

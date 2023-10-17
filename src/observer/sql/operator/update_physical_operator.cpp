@@ -19,9 +19,21 @@ See the Mulan PSL v2 for more details. */
 
 using namespace std;
 
-UpdatePhysicalOperator::UpdatePhysicalOperator(Table *table,const char * field_name, Value *value)
-    : table_(table), field_name_(field_name), value_(value)
-{}
+UpdatePhysicalOperator::UpdatePhysicalOperator(Table *table, const char * field_name, Value value)
+{
+  table_ = table;
+  char *tmp = (char *)malloc(sizeof(char) * (strlen(field_name) + 1));
+  strcpy(tmp, field_name);
+  field_name_ = tmp;
+
+  value_ = value;
+}
+
+UpdatePhysicalOperator::~UpdatePhysicalOperator() {
+  if (field_name_ != nullptr) {
+    delete field_name_;
+  }
+}
 
 RC UpdatePhysicalOperator::open(Trx *trx)
 {
@@ -37,7 +49,6 @@ RC UpdatePhysicalOperator::open(Trx *trx)
   }
 
   trx_ = trx;
-
   return rc;
 }
 
@@ -55,31 +66,39 @@ RC UpdatePhysicalOperator::next()
       LOG_WARN("failed to get current record: %s", strrc(rc));
       return rc;
     }
-    auto to_update_field_meta = table_->table_meta().field(field_name_);
-
 
     // 提取旧数据并插入需要修改的新数据
-    std::vector<Value> new_values;
-    for (int i = 0; i < tuple->cell_num();i++){
-      Value v;
-      
-      tuple->cell_at(i,v);
-      new_values.emplace_back(v);
-    }
+//    std::vector<Value> new_values;
+//    for (int i = 0; i < tuple->cell_num();i++){
+//      Value v;
+//
+//      tuple->cell_at(i,v);
+//      new_values.emplace_back(v);
+//    }
 
-    Record new_record;
-    RC rc = table_->make_record(1,new_values.data(),new_record);
+//    Record new_record;
+//    RC rc = table_->make_record(1,new_values.data(),new_record);
     RowTuple *row_tuple = static_cast<RowTuple *>(tuple);
     Record &record = row_tuple->record();
-
-
+//    删除旧记录
     rc = trx_->delete_record(table_, record);
     if (rc != RC::SUCCESS) {
       LOG_WARN("failed to delete record: %s", strrc(rc));
       return rc;
     }
-    rc = trx_->insert_record(table_,new_record);
-
+    auto to_update_field_meta = table_->table_meta().field(field_name_);
+//    修改记录
+    rc = row_tuple->set_cell(to_update_field_meta,&value_);
+    if (rc != RC::SUCCESS) {
+      LOG_WARN("failed to update record: %s", strrc(rc));
+      return rc;
+    }
+    // 添加新记录
+    rc = trx_->insert_record(table_,row_tuple->record());
+    if (rc != RC::SUCCESS) {
+      LOG_WARN("failed to insert record: %s", strrc(rc));
+      return rc;
+    }
   }
 
 

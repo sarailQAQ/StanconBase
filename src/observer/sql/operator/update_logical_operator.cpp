@@ -14,6 +14,18 @@ See the Mulan PSL v2 for more details. */
 
 #include "sql/operator/update_logical_operator.h"
 
-UpdateLogicalOperator::UpdateLogicalOperator(Table *table,const char *field_name, Value *value)
-    : table_(table),field_name_(field_name), value_(value){
+UpdateLogicalOperator::UpdateLogicalOperator(Table *table,const char *field_name, Value value)
+{
+  table_ = table;
+  value_ = std::move(value);
+
+  char *tmp = (char *)malloc(sizeof(char) * (strlen(field_name) + 1));
+  strcpy(tmp, field_name);
+  field_name_ = tmp;
+}
+
+UpdateLogicalOperator::~UpdateLogicalOperator() {
+  if (field_name_ != nullptr) {
+    free(field_name_);
+  }
 }

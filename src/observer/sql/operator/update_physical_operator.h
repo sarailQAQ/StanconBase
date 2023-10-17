@@ -27,9 +27,9 @@ class UpdateStmt;
 class UpdatePhysicalOperator : public PhysicalOperator
 {
 public:
-  UpdatePhysicalOperator(Table *table, const char * field_name, Value *value);
+  UpdatePhysicalOperator(Table *table, const char * field_name, Value value);
 
-  virtual ~UpdatePhysicalOperator() = default;
+  ~UpdatePhysicalOperator() override;
 
   PhysicalOperatorType type() const override
   {
@@ -44,7 +44,7 @@ public:
 
 private:
   Table *table_ = nullptr;
+  Value value_;
   const char * field_name_ = nullptr;
-  Value *value_ = nullptr;
   Trx *trx_ = nullptr;
 };

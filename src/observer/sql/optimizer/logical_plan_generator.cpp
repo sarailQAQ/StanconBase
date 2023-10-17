@@ -100,7 +100,7 @@ RC LogicalPlanGenerator::create_plan(
     return rc;
   }
 
-  unique_ptr<LogicalOperator> update_oper(new UpdateLogicalOperator(table,update_stmt->field_name(),update_stmt->values()));
+  unique_ptr<LogicalOperator> update_oper(new UpdateLogicalOperator(table,update_stmt->field_name(),*update_stmt->value()));
 
   if (predicate_oper) {
     predicate_oper->add_child(std::move(table_get_oper));

@@ -19,8 +19,8 @@ See the Mulan PSL v2 for more details. */
 #include "storage/table/table.h"
 #include "common/date.h"
 
-UpdateStmt::UpdateStmt(Table *table, const char *field_name, Value *values, int value_amount, FilterStmt *filter_stmt)
-    : table_(table), field_name_(field_name), values_(values), value_amount_(value_amount), filter_stmt_(filter_stmt)
+UpdateStmt::UpdateStmt(Table *table, const char *field_name, Value *value, int value_amount, FilterStmt *filter_stmt)
+    : table_(table), field_name_(field_name), value_(value), value_amount_(value_amount), filter_stmt_(filter_stmt)
 {}
 
 RC UpdateStmt::create(Db *db, const UpdateSqlNode &update, Stmt *&stmt)
@@ -44,6 +44,12 @@ RC UpdateStmt::create(Db *db, const UpdateSqlNode &update, Stmt *&stmt)
   //  字段校验
   const TableMeta &table_meta    = table->table_meta();
   auto field_meta    = table_meta.field(update.attribute_name.c_str());
+
+  // 字段不存在
+  if(field_meta == nullptr) {
+    LOG_WARN("no such table field. db=%s, table_name=%s, field_name=%s", db->name(), table_name,update.attribute_name.c_str());
+    return RC::SCHEMA_FIELD_NOT_EXIST;
+  }
 
   // 日期类型特判
   if (field_meta->type() == AttrType::DATES && update.value.attr_type() == AttrType::CHARS) {

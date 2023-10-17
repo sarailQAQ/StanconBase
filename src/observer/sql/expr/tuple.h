@@ -159,9 +159,22 @@ public:
     }
   }
 
+
   int cell_num() const override
   {
     return speces_.size();
+  }
+
+  // 修改记录中的指定字段
+  RC set_cell(const FieldMeta *field, const Value *value){
+    for (const auto &field_expr : speces_){
+      if(strcmp(field_expr->field_name(), field->name()) == 0){
+        strcpy(record_->data()+field->offset(),value->data());
+        return RC::SUCCESS;
+      }
+    }
+    LOG_WARN("can not find . field=%s", field->name());
+    return RC::INVALID_ARGUMENT;
   }
 
   RC cell_at(int index, Value &cell) const override

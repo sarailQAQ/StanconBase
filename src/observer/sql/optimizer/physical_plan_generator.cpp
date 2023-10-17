@@ -214,13 +214,29 @@ RC PhysicalPlanGenerator::create_plan(ProjectLogicalOperator &project_oper, uniq
 RC PhysicalPlanGenerator::create_plan(UpdateLogicalOperator &update_oper, unique_ptr<PhysicalOperator> &oper)
 {
   vector<unique_ptr<LogicalOperator>> &child_opers = update_oper.children();
+//  auto value_bak = update_oper.value();
+//  value_bak.set_type(update_oper.value()->attr_type());
 
+  // 先把子算子递归建立
   unique_ptr<PhysicalOperator> child_physical_oper;
-  Table *table = update_oper.table();
-  Value *value = update_oper.value();
+  RC rc = RC::SUCCESS;
+  if (!child_opers.empty()) {
+    LogicalOperator *child_oper = child_opers.front().get();
+    rc = create(*child_oper, child_physical_oper);
+    if (rc != RC::SUCCESS) {
+      LOG_WARN("failed to create physical operator. rc=%s", strrc(rc));
+      return rc;
+    }
+  }
 
-  UpdatePhysicalOperator *update_phy_oper = new UpdatePhysicalOperator(table,update_oper.field_name(),value);
-  oper.reset(update_phy_oper);
+  auto table = update_oper.table();
+  auto field_name = update_oper.field_name();
+  auto value = update_oper.value();
+  oper = unique_ptr<PhysicalOperator>(new UpdatePhysicalOperator(table,field_name, value));
+
+  if (child_physical_oper) {
+    oper->add_child(std::move(child_physical_oper));
+  }
   return RC::SUCCESS;
 }
 

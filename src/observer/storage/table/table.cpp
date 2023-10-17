@@ -469,6 +469,21 @@ RC Table::delete_record(const Record &record)
   return rc;
 }
 
+RC Table::update_record(Record &record, int offset, int index, Value &value) {
+  RC rc = RC::SUCCESS;
+  Record old_record(record);
+  rc = record_handler_->update_record(record, offset, index, value);
+  if (rc != RC::SUCCESS) {
+    LOG_ERROR("Update record failed. table name=%s, rc=%s", table_meta_.name(), strrc(rc));
+    return rc;
+  }
+  for (auto index : indexes_) {
+    index->delete_entry(old_record.data(), &old_record.rid());
+    index->insert_entry(record.data(), &record.rid());
+  }
+  return rc;
+}
+
 RC Table::insert_entry_of_indexes(const char *record, const RID &rid)
 {
   RC rc = RC::SUCCESS;

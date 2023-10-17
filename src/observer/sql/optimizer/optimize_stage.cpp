@@ -34,6 +34,7 @@ using namespace common;
 RC OptimizeStage::handle_request(SQLStageEvent *sql_event)
 {
   unique_ptr<LogicalOperator> logical_operator;
+//  创建逻辑算子
   RC rc = create_logical_plan(sql_event, logical_operator);
   if (rc != RC::SUCCESS) {
     if (rc != RC::UNIMPLENMENT) {
@@ -43,6 +44,7 @@ RC OptimizeStage::handle_request(SQLStageEvent *sql_event)
   }
 
   // 重写逻辑算子，根据各种规则，对逻辑计划进行重写，比如消除多余的比较(1!=0)等。规则改写也是一个递归的过程。
+  // 比如过滤算子合并到 get算子里面
   rc = rewrite(logical_operator);
   if (rc != RC::SUCCESS) {
     LOG_WARN("failed to rewrite plan. rc=%s", strrc(rc));
@@ -89,7 +91,7 @@ RC OptimizeStage::generate_physical_plan(
 RC OptimizeStage::rewrite(unique_ptr<LogicalOperator> &logical_operator)
 {
   RC rc = RC::SUCCESS;
-  
+
   bool change_made = false;
   do {
     change_made = false;
