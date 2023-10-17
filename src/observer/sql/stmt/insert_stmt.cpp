@@ -22,16 +22,6 @@ InsertStmt::InsertStmt(Table *table, const Value *values, int value_amount)
     : table_(table), values_(values), value_amount_(value_amount)
 {}
 
-bool check_day(int date)
-{
-  int y = date / 10000;
-  int m = (date % 10000) / 100;
-  int d = date % 100;
-  const int mon[] = {0, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
-  bool leap = (y%400==0 || (y%100 && y%4==0));
-  return (d > 0)&&(d <= ((m==2 && leap)?1:0) + mon[m]);
-}
-
 RC InsertStmt::create(Db *db, InsertSqlNode &inserts, Stmt *&stmt)
 {
   const char *table_name = inserts.relation_name.c_str();
@@ -49,9 +39,7 @@ RC InsertStmt::create(Db *db, InsertSqlNode &inserts, Stmt *&stmt)
   }
 
   // check the fields number
-//  const Value *values = inserts.values.data();
-  // 为了修改values里的内容，就创建一个new_values，要改就直接进去，不改就平移
-//  std::vector<Value> new_values;
+//  const Value *values = inserts.values.data(); // const类型无法修改，所以不用
   const int value_num = static_cast<int>(inserts.values.size());
   const TableMeta &table_meta = table->table_meta();
   const int field_num = table_meta.field_num() - table_meta.sys_field_num();

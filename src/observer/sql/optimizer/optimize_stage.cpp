@@ -42,12 +42,14 @@ RC OptimizeStage::handle_request(SQLStageEvent *sql_event)
     return rc;
   }
 
+  // 重写逻辑算子，根据各种规则，对逻辑计划进行重写，比如消除多余的比较(1!=0)等。规则改写也是一个递归的过程。
   rc = rewrite(logical_operator);
   if (rc != RC::SUCCESS) {
     LOG_WARN("failed to rewrite plan. rc=%s", strrc(rc));
     return rc;
   }
 
+  // 优化，当前什么都没做。可以增加每个逻辑计划的代价模型，然后根据代价模型进行优化。
   rc = optimize(logical_operator);
   if (rc != RC::SUCCESS) {
     LOG_WARN("failed to optimize plan. rc=%s", strrc(rc));
@@ -55,6 +57,7 @@ RC OptimizeStage::handle_request(SQLStageEvent *sql_event)
   }
 
   unique_ptr<PhysicalOperator> physical_operator;
+  // 生成物理算子
   rc = generate_physical_plan(logical_operator, physical_operator);
   if (rc != RC::SUCCESS) {
     LOG_WARN("failed to generate physical plan. rc=%s", strrc(rc));

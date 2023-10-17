@@ -56,5 +56,4 @@ private:
   Table *table_ = nullptr;
   const Value *values_ = nullptr;
   int value_amount_ = 0;
-  static void  value_init_date(const Value *pValue, int num);
 };
