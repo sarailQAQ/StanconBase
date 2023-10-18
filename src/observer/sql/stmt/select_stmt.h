@@ -53,6 +53,7 @@ public:
   {
     return query_fields_;
   }
+
   FilterStmt *filter_stmt() const
   {
     return filter_stmt_;

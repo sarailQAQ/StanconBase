@@ -26,13 +26,20 @@ public:
   ProjectPhysicalOperator()
   {}
 
-  virtual ~ProjectPhysicalOperator() = default;
+  ~ProjectPhysicalOperator() {
+    if(has_agg_func_){
+      const Tuple *last_tuple = tuple_.tuple();
+      if (last_tuple != nullptr) {
+        delete last_tuple;
+      }
+    }
+  }
 
   void add_expressions(std::vector<std::unique_ptr<Expression>> &&expressions)
   {
     
   }
-  void add_projection(const Table *table, const FieldMeta *field);
+  void add_projection(const Field &field);
 
   PhysicalOperatorType type() const override
   {
@@ -52,4 +59,5 @@ public:
 
 private:
   ProjectTuple tuple_;
+  bool         has_agg_func_ = false;
 };

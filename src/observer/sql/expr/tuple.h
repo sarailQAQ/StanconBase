@@ -55,9 +55,9 @@ public:
   {
     cells_.push_back(cell);
   }
-  void append_cell(const char *table, const char *field)
+  void append_cell(const char *table, const char *field, AggFunc agg_func)
   {
-    append_cell(TupleCellSpec(table, field));
+    append_cell(TupleCellSpec(table, field, nullptr, agg_func));
   }
   void append_cell(const char *alias)
   {
@@ -256,14 +256,24 @@ public:
     speces_.clear();
   }
 
+  Tuple * tuple()
+  {
+    return tuple_;
+  }
+
   void set_tuple(Tuple *tuple)
   {
     this->tuple_ = tuple;
   }
 
+  const std::vector<TupleCellSpec *>& speces() {
+    return speces_;
+  }
+
   void add_cell_spec(TupleCellSpec *spec)
   {
     speces_.push_back(spec);
+//    agg_funcs_.push_back(spec->agg_func());
   }
   int cell_num() const override
   {
@@ -279,8 +289,12 @@ public:
       return RC::INTERNAL;
     }
 
-    const TupleCellSpec *spec = speces_[index];
-    return tuple_->find_cell(*spec, cell);
+    if(speces_[index]->agg_func() == AggFunc::A_NULL){
+      const TupleCellSpec *spec = speces_[index];
+      return tuple_->find_cell(*spec, cell);
+    } else{
+      return tuple_->cell_at(index,cell);
+    }
   }
 
   RC find_cell(const TupleCellSpec &spec, Value &cell) const override
@@ -300,6 +314,7 @@ public:
 #endif
 private:
   std::vector<TupleCellSpec *> speces_;
+//  std::vector<AggFunc> agg_funcs_;
   Tuple *tuple_ = nullptr;
 };
 

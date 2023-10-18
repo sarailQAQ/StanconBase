@@ -343,50 +343,33 @@ type:
     | FLOAT_T  { $$=FLOATS; }
     | DATE_T  { $$=DATES; }
     ;
-insert into t values (1,'name');
-insert_stmt:
-    /*insert   语句的语法解析树*/
-    INSERT INTO ID VALUES LBRACE value_list RBRACE
+insert_stmt:        /*insert   语句的语法解析树*/
+    INSERT INTO ID VALUES LBRACE value value_list RBRACE 
     {
       $$ = new ParsedSqlNode(SCF_INSERT);
       $$->insertion.relation_name = $3;
-      if ($6 != nullptr) {
-        $$->insertion.values.swap(*$6);
+      if ($7 != nullptr) {
+        $$->insertion.values.swap(*$7);
       }
+      $$->insertion.values.emplace_back(*$6);
+      std::reverse($$->insertion.values.begin(), $$->insertion.values.end());
       delete $6;
       free($3);
     }
     ;
+
 value_list:
     /* empty */
     {
       $$ = nullptr;
     }
-    | value value_list_tail
-    {
-      $$ = new std::vector<Value>;
-      $$->emplace_back(*$1);
-      if ($2 != nullptr) {
-        $$->insert($$->end(), $2->begin(), $2->end());
-        delete $2;
-      }
-      delete $1;
-    }
-    ;
-
-value_list_tail:
-    /* empty */
-    {
-      $$ = nullptr;
-    }
-    | COMMA value value_list_tail
-    {
-      $$ = new std::vector<Value>;
-      $$->emplace_back(*$2);
+    | COMMA value value_list  { 
       if ($3 != nullptr) {
-        $$->insert($$->end(), $3->begin(), $3->end());
-        delete $3;
+        $$ = $3;
+      } else {
+        $$ = new std::vector<Value>;
       }
+      $$->emplace_back(*$2);
       delete $2;
     }
     ;

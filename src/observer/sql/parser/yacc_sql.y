@@ -98,6 +98,11 @@ ArithmeticExpr *create_arithmetic_expression(ArithmeticExpr::Type type,
         LE
         GE
         NE
+        COUNT
+        SUM
+        MAX
+        MIN
+        AVG
 
 /** union 中定义各种数据类型，真实生成的代码也是union类型，所以不能有非POD类型的数据 **/
 %union {
@@ -507,6 +512,54 @@ select_attr:
       }
       $$->emplace_back(*$1);
       delete $1;
+    }
+    | COUNT LBRACE '*' RBRACE {
+        $$ = new std::vector<RelAttrSqlNode>;
+        RelAttrSqlNode attr;
+        attr.relation_name  = "";
+        attr.attribute_name = "*";
+        attr.agg_func = AggFunc::A_COUNT;
+        $$->emplace_back(attr);
+    }
+    | COUNT LBRACE ID RBRACE {
+            $$ = new std::vector<RelAttrSqlNode>;
+            RelAttrSqlNode attr;
+            attr.relation_name  = "";
+            attr.attribute_name = $3;
+            attr.agg_func = AggFunc::A_COUNT;
+            $$->emplace_back(attr);
+    }
+    | SUM LBRACE ID RBRACE {
+            $$ = new std::vector<RelAttrSqlNode>;
+            RelAttrSqlNode attr;
+            attr.relation_name  = "";
+            attr.attribute_name = $3;
+            attr.agg_func = AggFunc::A_SUM;
+            $$->emplace_back(attr);
+    }
+    | MIN LBRACE ID RBRACE {
+                $$ = new std::vector<RelAttrSqlNode>;
+                RelAttrSqlNode attr;
+                attr.relation_name  = "";
+                attr.attribute_name = $3;
+                attr.agg_func = AggFunc::A_MIN;
+                $$->emplace_back(attr);
+    }
+    | MAX LBRACE ID RBRACE {
+                $$ = new std::vector<RelAttrSqlNode>;
+                RelAttrSqlNode attr;
+                attr.relation_name  = "";
+                attr.attribute_name = $3;
+                attr.agg_func = AggFunc::A_MAX;
+                $$->emplace_back(attr);
+    }
+    | AVG LBRACE ID RBRACE {
+                $$ = new std::vector<RelAttrSqlNode>;
+                RelAttrSqlNode attr;
+                attr.relation_name  = "";
+                attr.attribute_name = $3;
+                attr.agg_func = AggFunc::A_AVG;
+                $$->emplace_back(attr);
     }
     ;
 
