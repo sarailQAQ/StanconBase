@@ -32,7 +32,7 @@ static void wildcard_fields(Table *table, std::vector<Field> &field_metas)
   const TableMeta &table_meta = table->table_meta();
   const int        field_num  = table_meta.field_num();
   for (int i = table_meta.sys_field_num(); i < field_num; i++) {
-    field_metas.push_back(Field(table, table_meta.field(i)));
+    field_metas.push_back(Field(table, table_meta.field(i), table_meta.field(i)->name()));
   }
 }
 
@@ -97,8 +97,15 @@ RC SelectStmt::create(Db *db, const SelectSqlNode &select_sql, Stmt *&stmt)
         // 字段是 * 就默认按照以第一个字段(第一个非系统字段)来聚合
         field_meta = table->table_meta().field(table->table_meta().sys_field_num());
       }
+
+      // 校验不支持的聚合字段
+      if((relation_attr.agg_func == AggFunc::A_AVG || relation_attr.agg_func == AggFunc::A_SUM ) && (field_meta->type() == AttrType::CHARS || field_meta->type() == AttrType::DATES)){
+        LOG_WARN("not support func field=%s.%s.%s , func = %s", db->name(), table->name(), relation_attr.attribute_name.c_str(),relation_attr.agg_func);
+        return RC::INVALID_ARGUMENT;
+      }
+
       // 校验完成
-      agg_fields_.emplace_back(Field(table, field_meta, relation_attr.agg_func));
+      agg_fields_.emplace_back(Field(table, field_meta, relation_attr.alias, relation_attr.agg_func));
       continue;
     }
 
@@ -138,7 +145,7 @@ RC SelectStmt::create(Db *db, const SelectSqlNode &select_sql, Stmt *&stmt)
             return RC::SCHEMA_FIELD_MISSING;
           }
 
-          query_fields.push_back(Field(table, field_meta));
+          query_fields.push_back(Field(table, field_meta, relation_attr.alias ));
         }
       }
     } else {  // 没给表名（使用from list 里唯一的表名）
@@ -154,7 +161,7 @@ RC SelectStmt::create(Db *db, const SelectSqlNode &select_sql, Stmt *&stmt)
         return RC::SCHEMA_FIELD_MISSING;
       }
 
-      query_fields.push_back(Field(table, field_meta));
+      query_fields.push_back(Field(table, field_meta, relation_attr.alias));
     }
   }
 

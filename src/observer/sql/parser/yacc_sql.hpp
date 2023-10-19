@@ -123,6 +123,7 @@ union YYSTYPE
   Value *                           value;
   enum CompOp                       comp;
   RelAttrSqlNode *                  rel_attr;
+  RelAttrSqlNode *                  agg_func;
   std::vector<AttrInfoSqlNode> *    attr_infos;
   AttrInfoSqlNode *                 attr_info;
   Expression *                      expression;
@@ -135,7 +136,7 @@ union YYSTYPE
   int                               number;
   float                             floats;
 
-#line 139 "yacc_sql.hpp"
+#line 140 "yacc_sql.hpp"
 
 };
 typedef union YYSTYPE YYSTYPE;

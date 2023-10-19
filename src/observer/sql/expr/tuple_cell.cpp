@@ -37,7 +37,27 @@ TupleCellSpec::TupleCellSpec(const char *table_name, const char *field_name, con
     }
   }
 
+  // 如果有 func 就在alias 的基础上包装一下
   agg_func_ = agg_func;
+  if (agg_func) {
+    switch (agg_func_) {
+      case AggFunc::A_COUNT: {
+        alias_ = "COUNT(" + alias_ + ")";
+      } break;
+      case AggFunc::A_MAX: {
+        alias_ = "MAX(" + alias_ + ")";
+      } break;
+      case AggFunc::A_MIN: {
+        alias_ = "MIN(" + alias_ + ")";
+      } break;
+      case AggFunc::A_AVG: {
+        alias_ = "AVG(" + alias_ + ")";
+      } break;
+      case AggFunc::A_SUM: {
+        alias_ = "SUM(" + alias_ + ")";
+      }
+    }
+  }
 }
 
 TupleCellSpec::TupleCellSpec(const char *alias)

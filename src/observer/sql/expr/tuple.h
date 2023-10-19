@@ -63,6 +63,10 @@ public:
   {
     append_cell(TupleCellSpec(alias));
   }
+  void append_cell(const char *alias, AggFunc agg_func)
+  {
+    append_cell(TupleCellSpec(nullptr,alias, nullptr,agg_func));
+  }
   int cell_num() const
   {
     return static_cast<int>(cells_.size());

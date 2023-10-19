@@ -53,6 +53,7 @@ struct RelAttrSqlNode
   std::string relation_name;   ///< relation name (may be NULL) 表名
   std::string attribute_name;  ///< attribute name              属性名
   AggFunc agg_func = A_NULL;        ///< aggregation func name       聚合方法名（不为NULL则是对attribute_name进行聚合）
+  std::string alias ;        ///< show name       查询结果的别名
 };
 
 
