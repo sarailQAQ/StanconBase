@@ -120,6 +120,7 @@ RC LogicalPlanGenerator::create_plan(
 
   const std::vector<Table *> &tables = select_stmt->tables();
   const std::vector<Field> &all_fields = select_stmt->query_fields();
+  // 单表table_oper 就是一个get算子，多表的话table_oper是一个join算子 其子节点分别是各个表的get算子
   for (Table *table : tables) {
     std::vector<Field> fields;
     for (const Field &field : all_fields) {
@@ -139,6 +140,7 @@ RC LogicalPlanGenerator::create_plan(
     }
   }
 
+//  谓语算子
   unique_ptr<LogicalOperator> predicate_oper;
   RC rc = create_plan(select_stmt->filter_stmt(), predicate_oper);
   if (rc != RC::SUCCESS) {
@@ -146,6 +148,7 @@ RC LogicalPlanGenerator::create_plan(
     return rc;
   }
 
+//  投影算子
   unique_ptr<LogicalOperator> project_oper(new ProjectLogicalOperator(all_fields));
   if (predicate_oper) {
     if (table_oper) {

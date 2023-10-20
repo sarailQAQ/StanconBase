@@ -298,12 +298,14 @@ RC PhysicalPlanGenerator::create_plan(JoinLogicalOperator &join_oper, unique_ptr
 {
   RC rc = RC::SUCCESS;
 
+  // TODO 这里暂时只支持两个表join
   vector<unique_ptr<LogicalOperator>> &child_opers = join_oper.children();
   if (child_opers.size() != 2) {
     LOG_WARN("join operator should have 2 children, but have %d", child_opers.size());
     return RC::INTERNAL;
   }
 
+//  嵌套循环 join 算子
   unique_ptr<PhysicalOperator> join_physical_oper(new NestedLoopJoinPhysicalOperator);
   for (auto &child_oper : child_opers) {
     unique_ptr<PhysicalOperator> child_physical_oper;

@@ -98,6 +98,11 @@ ArithmeticExpr *create_arithmetic_expression(ArithmeticExpr::Type type,
         LE
         GE
         NE
+        COUNT
+        SUM
+        MAX
+        MIN
+        AVG
 
 /** union 中定义各种数据类型，真实生成的代码也是union类型，所以不能有非POD类型的数据 **/
 %union {
@@ -106,6 +111,7 @@ ArithmeticExpr *create_arithmetic_expression(ArithmeticExpr::Type type,
   Value *                           value;
   enum CompOp                       comp;
   RelAttrSqlNode *                  rel_attr;
+  RelAttrSqlNode *                  agg_func;
   std::vector<AttrInfoSqlNode> *    attr_infos;
   AttrInfoSqlNode *                 attr_info;
   Expression *                      expression;
@@ -132,12 +138,14 @@ ArithmeticExpr *create_arithmetic_expression(ArithmeticExpr::Type type,
 %type <number>              number
 %type <comp>                comp_op
 %type <rel_attr>            rel_attr
+%type <agg_func>            agg_func
 %type <attr_infos>          attr_def_list
 %type <attr_info>           attr_def
 %type <value_list>          value_list
 %type <condition_list>      where
 %type <condition_list>      condition_list
 %type <rel_attr_list>       select_attr
+%type <rel_attr_list>       agg_func_list
 %type <relation_list>       rel_list
 %type <rel_attr_list>       attr_list
 %type <expression>          expression
@@ -508,10 +516,78 @@ select_attr:
       $$->emplace_back(*$1);
       delete $1;
     }
+    | agg_func agg_func_list {
+      if ($2 != nullptr) {
+        $$ = $2;
+      } else {
+        $$ = new std::vector<RelAttrSqlNode>;
+      }
+      $$->emplace_back(*$1);
+      delete $1;
+    }
+    ;
+
+agg_func:
+    COUNT LBRACE '*' RBRACE {
+        $$ = new RelAttrSqlNode;
+        $$->relation_name  = "";
+        $$->attribute_name = "*";
+        $$->agg_func = AggFunc::A_COUNT;
+        $$->alias = "COUNT(*)";
+    }
+    | COUNT LBRACE '1' RBRACE {
+        $$ = new RelAttrSqlNode;
+        $$->relation_name  = "";
+        $$->attribute_name = "*";
+        $$->agg_func = AggFunc::A_COUNT;
+        $$->alias = "COUNT(1)";
+    }
+    | COUNT LBRACE rel_attr RBRACE {
+        $3->agg_func = AggFunc::A_COUNT;
+        $$ = std::move($3);
+    }
+    | SUM LBRACE rel_attr RBRACE {
+        $3->agg_func = AggFunc::A_SUM;
+        $$ = std::move($3);
+    }
+    | MIN LBRACE rel_attr RBRACE {
+        $3->agg_func = AggFunc::A_MIN;
+        $$ = std::move($3);
+    }
+    | MAX LBRACE rel_attr RBRACE {
+        $3->agg_func = AggFunc::A_MAX;
+        $$ = std::move($3);
+    }
+    | AVG LBRACE rel_attr RBRACE {
+        $3->agg_func = AggFunc::A_AVG;
+        $$ = std::move($3);
+    }
+    ;
+
+agg_func_list:
+    /* empty */
+    {
+        $$ = nullptr;
+    }
+    | COMMA agg_func agg_func_list {
+        if ($3 != nullptr) {
+            $$ = $3;
+        } else {
+            $$ = new std::vector<RelAttrSqlNode>;
+        }
+        $$->emplace_back(*$2);
+        delete $2;
+    }
     ;
 
 rel_attr:
-    ID {
+    ID DOT '*' {
+          $$ = new RelAttrSqlNode;
+          $$->relation_name  = $1;
+          $$->attribute_name = "*";
+          free($1);
+    }
+    | ID {
       $$ = new RelAttrSqlNode;
       $$->attribute_name = $1;
       free($1);
