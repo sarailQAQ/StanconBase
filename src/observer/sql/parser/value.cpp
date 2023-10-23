@@ -230,6 +230,11 @@ int Value::compare(const Value &other) const
   } else if (this->attr_type_ == FLOATS && other.attr_type_ == INTS) {
     float other_data = other.num_value_.int_value_;
     return common::compare_float((void *)&this->num_value_.float_value_, (void *)&other_data);
+  } else if (this->attr_type_ == CHARS || other.attr_type_ == CHARS){
+    return common::compare_string((void *)this->get_string().c_str(),
+        this->get_string().length(),
+        (void *)other.get_string().c_str(),
+        other.get_string().length());
   }
   LOG_WARN("not supported");
   return -1;  // TODO return rc?
