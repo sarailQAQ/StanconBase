@@ -149,6 +149,16 @@ public:
     speces_.clear();
   }
 
+  RowTuple *clone(){
+    RowTuple *new_tuple = new RowTuple();
+    new_tuple->record_ = new Record(*record_); // 数据深拷贝，元数据浅拷贝
+    new_tuple->speces_ = speces_;
+    new_tuple->table_ = table_;
+    return new_tuple;
+
+  }
+
+
   void set_record(Record *record)
   {
     this->record_ = record;

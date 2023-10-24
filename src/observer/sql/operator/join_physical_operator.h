@@ -27,7 +27,8 @@ class NestedLoopJoinPhysicalOperator : public PhysicalOperator
 public:
   NestedLoopJoinPhysicalOperator();
   NestedLoopJoinPhysicalOperator(std::vector<std::unique_ptr<Expression>> expr);
-  virtual ~NestedLoopJoinPhysicalOperator() = default;
+  ~NestedLoopJoinPhysicalOperator(){
+  }
 
   PhysicalOperatorType type() const override
   {
@@ -55,5 +56,8 @@ private:
   bool round_done_ = true;    //! 右表遍历的一轮是否结束
   bool right_closed_ = true;  //! 右表算子是否已经关闭
   std::unique_ptr<Expression> expression_;
+
+  std::vector<Tuple *>right_tuple_cache_; // 第一次查询就把右表缓存到内存
+  int right_index_ = 0;
   RC                          check_expr(JoinedTuple tuple);
 };
