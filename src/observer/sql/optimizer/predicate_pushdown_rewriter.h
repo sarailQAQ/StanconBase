@@ -16,6 +16,7 @@ See the Mulan PSL v2 for more details. */
 
 #include <vector>
 #include "sql/optimizer/rewrite_rule.h"
+#include "sql/expr/expression.h"
 
 /**
  * @brief 将一些谓词表达式下推到表数据扫描中
@@ -33,4 +34,5 @@ public:
 private:
   RC get_exprs_can_pushdown(
       std::unique_ptr<Expression> &expr, std::vector<std::unique_ptr<Expression>> &pushdown_exprs);
+  RC rewrite_join(std::unique_ptr<LogicalOperator> &left_opr,std::unique_ptr<LogicalOperator> &right_opr, std::vector<std::unique_ptr<Expression>> &exprs, bool &made);
 };

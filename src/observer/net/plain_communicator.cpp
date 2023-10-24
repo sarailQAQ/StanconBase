@@ -261,6 +261,7 @@ RC PlainCommunicator::write_result_internal(SessionEvent *event, bool &need_disc
       sql_result->close();
       return rc;
     }
+//    writer_->flush();
   }
 
   if (rc == RC::RECORD_EOF) {

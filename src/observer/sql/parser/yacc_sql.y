@@ -439,12 +439,17 @@ select_stmt:        /*  select 语句的语法解析树*/
         delete $2;
       }
       if ($5 != nullptr) {
+
         for(auto item: *$5) {
             relations.emplace_back(item.relation);
             if(!item.conditions.empty()){
-                $$->selection.conditions.insert($$->selection.conditions.end(), item.conditions.begin(), item.conditions.end());
+                auto join_condition = new std::vector<ConditionSqlNode>;
+                join_condition->insert(join_condition->end(),item.conditions.begin(), item.conditions.end());
+                $$->selection.join_conditions.emplace_back(*join_condition);
+                delete join_condition;
             }
         }
+        std::reverse($$->selection.join_conditions.begin(), $$->selection.join_conditions.end());
         $$->selection.relations.swap(relations);
         delete $5;
       }

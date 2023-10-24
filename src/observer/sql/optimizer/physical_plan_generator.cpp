@@ -306,7 +306,7 @@ RC PhysicalPlanGenerator::create_plan(JoinLogicalOperator &join_oper, unique_ptr
   }
 
 //  嵌套循环 join 算子
-  unique_ptr<PhysicalOperator> join_physical_oper(new NestedLoopJoinPhysicalOperator);
+  unique_ptr<PhysicalOperator> join_physical_oper(new NestedLoopJoinPhysicalOperator(std::move(join_oper.expressions())));
   for (auto &child_oper : child_opers) {
     unique_ptr<PhysicalOperator> child_physical_oper;
     rc = create(*child_oper, child_physical_oper);
@@ -314,7 +314,6 @@ RC PhysicalPlanGenerator::create_plan(JoinLogicalOperator &join_oper, unique_ptr
       LOG_WARN("failed to create physical child oper. rc=%s", strrc(rc));
       return rc;
     }
-
     join_physical_oper->add_child(std::move(child_physical_oper));
   }
 

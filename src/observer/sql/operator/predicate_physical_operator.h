@@ -27,6 +27,7 @@ class FilterStmt;
 class PredicatePhysicalOperator : public PhysicalOperator
 {
 public:
+  PredicatePhysicalOperator();
   PredicatePhysicalOperator(std::unique_ptr<Expression> expr);
 
   virtual ~PredicatePhysicalOperator() = default;

@@ -99,7 +99,8 @@ RC SelectStmt::create(Db *db, const SelectSqlNode &select_sql, Stmt *&stmt)
       }
 
       // 校验不支持的聚合字段
-      if((relation_attr.agg_func == AggFunc::A_AVG || relation_attr.agg_func == AggFunc::A_SUM ) && (field_meta->type() == AttrType::CHARS || field_meta->type() == AttrType::DATES)){
+      if ((relation_attr.agg_func == AggFunc::A_AVG || relation_attr.agg_func == AggFunc::A_SUM) &&
+          (field_meta->type() == AttrType::CHARS || field_meta->type() == AttrType::DATES)) {
         LOG_WARN("not support func field=%s.%s.%s , func = %s", db->name(), table->name(), relation_attr.attribute_name.c_str(),relation_attr.agg_func);
         return RC::INVALID_ARGUMENT;
       }
@@ -145,7 +146,7 @@ RC SelectStmt::create(Db *db, const SelectSqlNode &select_sql, Stmt *&stmt)
             return RC::SCHEMA_FIELD_MISSING;
           }
 
-          query_fields.push_back(Field(table, field_meta, relation_attr.alias ));
+          query_fields.push_back(Field(table, field_meta, relation_attr.alias));
         }
       }
     } else {  // 没给表名（使用from list 里唯一的表名）
@@ -178,6 +179,25 @@ RC SelectStmt::create(Db *db, const SelectSqlNode &select_sql, Stmt *&stmt)
     default_table = tables[0];
   }
 
+  // join 连接条件
+  std::vector<FilterStmt *> join_filter_stmts;
+  if (!select_sql.join_conditions.empty()) {
+    for (const auto &item : select_sql.join_conditions) {
+      FilterStmt *filter_stmt = nullptr;
+      RC          rc          = FilterStmt::create(db,
+          default_table,
+          &table_map,
+          item.data(),
+          static_cast<int>(item.size()),
+          filter_stmt);
+      if (rc != RC::SUCCESS) {
+        LOG_WARN("cannot construct filter stmt");
+        return rc;
+      }
+      join_filter_stmts.emplace_back(filter_stmt);
+    }
+  }
+
   // create filter statement in `where` statement
   FilterStmt *filter_stmt = nullptr;
   RC          rc          = FilterStmt::create(db,
@@ -197,7 +217,9 @@ RC SelectStmt::create(Db *db, const SelectSqlNode &select_sql, Stmt *&stmt)
   select_stmt->tables_.swap(tables);
   // 聚合字段和非聚合字段选一个存进去
   select_stmt->query_fields_.swap(!agg_fields_.empty() ? agg_fields_ : query_fields);
+  //  select_stmt->join_filter_stmts_ =
   select_stmt->filter_stmt_ = filter_stmt;
+  select_stmt->join_filter_stmts_ = join_filter_stmts;
   stmt                      = select_stmt;
   return RC::SUCCESS;
 }

@@ -53,6 +53,10 @@ public:
   {
     return query_fields_;
   }
+  const std::vector<FilterStmt *> &join_filter_stmts() const
+  {
+    return join_filter_stmts_;
+  }
 
   FilterStmt *filter_stmt() const
   {
@@ -62,5 +66,6 @@ public:
 private:
   std::vector<Field> query_fields_;
   std::vector<Table *> tables_;
+  std::vector<FilterStmt *> join_filter_stmts_; // 表的连接条件一个on 对应一个FilterStmt
   FilterStmt *filter_stmt_ = nullptr;
 };
