@@ -102,6 +102,7 @@ ArithmeticExpr *create_arithmetic_expression(ArithmeticExpr::Type type,
         NE
         // like已经在词法解析之中解析出
         LIKE_C
+        NOT
         COUNT
         SUM
         MAX
@@ -751,6 +752,7 @@ comp_op:
     | GE { $$ = GREAT_EQUAL; }
     | NE { $$ = NOT_EQUAL; }
     | LIKE_C{$$ = LIKE;}
+    | NOT LIKE_C{$$ = NOT_LIKE;}
     ;
 
 load_data_stmt:
