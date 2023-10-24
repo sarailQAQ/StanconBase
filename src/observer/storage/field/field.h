@@ -14,6 +14,8 @@ See the Mulan PSL v2 for more details. */
 
 #pragma once
 
+#include <utility>
+
 #include "storage/table/table.h"
 #include "storage/field/field_meta.h"
 
@@ -25,7 +27,7 @@ class Field
 {
 public:
   Field() = default;
-  Field(const Table *table, const FieldMeta *field) : table_(table), field_(field)
+  Field(const Table *table, const FieldMeta *field,std::string alias = "",AggFunc agg_func = AggFunc::A_NULL) : table_(table), field_(field), agg_func_(agg_func),alias_(std::move(alias))
   {}
   Field(const Field &) = default;
 
@@ -43,6 +45,11 @@ public:
     return field_->type();
   }
 
+  const AggFunc agg_func() const
+  {
+    return agg_func_;
+  }
+
   const char *table_name() const
   {
     return table_->name();
@@ -50,6 +57,10 @@ public:
   const char *field_name() const
   {
     return field_->name();
+  }
+  const char *alias() const
+  {
+    return alias_.c_str();
   }
 
   void set_table(const Table *table)
@@ -69,4 +80,6 @@ public:
 private:
   const Table *table_ = nullptr;
   const FieldMeta *field_ = nullptr;
+  AggFunc agg_func_ = AggFunc::A_NULL;
+  std::string alias_;
 };

@@ -9,30 +9,29 @@ MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 See the Mulan PSL v2 for more details. */
 
 //
-// Created by WangYunlai on 2021/6/10.
+// Created by Weizhi on 2023/10/20.
 //
 
 #pragma once
 
 #include "sql/parser/parse.h"
 #include "sql/operator/physical_operator.h"
+#include <unordered_map>
 
 /**
- * @brief 最简单的两表（称为左表、右表）join算子 嵌套循环 join 算子
- * @details 依次遍历左表的每一行，然后关联右表的每一行
- * @ingroup PhysicalOperator
+ * @brief 哈希连接 物理算子
+ * @details
+ * @ingroup HashJoinPhysicalOperator
  */
-class NestedLoopJoinPhysicalOperator : public PhysicalOperator
+class HashJoinPhysicalOperator : public PhysicalOperator
 {
 public:
-  NestedLoopJoinPhysicalOperator();
-  NestedLoopJoinPhysicalOperator(std::vector<std::unique_ptr<Expression>> expr);
-  ~NestedLoopJoinPhysicalOperator(){
-  }
+  HashJoinPhysicalOperator();
+  virtual ~HashJoinPhysicalOperator() = default;
 
   PhysicalOperatorType type() const override
   {
-    return PhysicalOperatorType::NESTED_LOOP_JOIN;
+    return PhysicalOperatorType::HASH_JOIN;
   }
 
   RC open(Trx *trx) override;
@@ -47,6 +46,7 @@ private:
 private:
   Trx *trx_ = nullptr;
 
+
   //! 左表右表的真实对象是在PhysicalOperator::children_中，这里是为了写的时候更简单
   PhysicalOperator *left_ = nullptr;
   PhysicalOperator *right_ = nullptr;
@@ -55,9 +55,4 @@ private:
   JoinedTuple joined_tuple_;  //! 当前关联的左右两个tuple
   bool round_done_ = true;    //! 右表遍历的一轮是否结束
   bool right_closed_ = true;  //! 右表算子是否已经关闭
-  std::unique_ptr<Expression> expression_;
-
-  std::vector<Tuple *>right_tuple_cache_; // 第一次查询就把右表缓存到内存
-  int right_index_ = 0;
-  RC                          check_expr(JoinedTuple tuple);
 };

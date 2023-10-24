@@ -24,6 +24,20 @@ See the Mulan PSL v2 for more details. */
 class Expression;
 
 /**
+ * @brief 聚合方法
+ * @ingroup aggregation Func
+ */
+enum AggFunc
+{
+  A_NULL,
+  A_COUNT,
+  A_SUM,
+  A_MAX,
+  A_MIN,
+  A_AVG
+};
+
+/**
  * @defgroup SQLParser SQL Parser 
  */
 
@@ -38,7 +52,10 @@ struct RelAttrSqlNode
 {
   std::string relation_name;   ///< relation name (may be NULL) 表名
   std::string attribute_name;  ///< attribute name              属性名
+  AggFunc agg_func = A_NULL;        ///< aggregation func name       聚合方法名（不为NULL则是对attribute_name进行聚合）
+  std::string alias ;        ///< show name       查询结果的别名
 };
+
 
 /**
  * @brief 描述比较运算符
@@ -77,6 +94,12 @@ struct ConditionSqlNode
   Value           right_value;     ///< right-hand side value if right_is_attr = FALSE
 };
 
+struct RelWithConditions
+{
+  std::string relation;
+  std::vector<ConditionSqlNode> conditions;
+};
+
 /**
  * @brief 描述一个select语句
  * @ingroup SQLParser
@@ -92,6 +115,7 @@ struct SelectSqlNode
 {
   std::vector<RelAttrSqlNode>     attributes;    ///< attributes in select clause
   std::vector<std::string>        relations;     ///< 查询的表
+  std::vector<std::vector<ConditionSqlNode>>   join_conditions;    ///< 连接条件 一个inner join 对应一个std::vector<ConditionSqlNode>
   std::vector<ConditionSqlNode>   conditions;    ///< 查询条件，使用AND串联起来多个条件
 };
 

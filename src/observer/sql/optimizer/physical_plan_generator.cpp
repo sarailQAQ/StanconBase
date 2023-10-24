@@ -198,7 +198,7 @@ RC PhysicalPlanGenerator::create_plan(ProjectLogicalOperator &project_oper, uniq
   ProjectPhysicalOperator *project_operator = new ProjectPhysicalOperator;
   const vector<Field> &project_fields = project_oper.fields();
   for (const Field &field : project_fields) {
-    project_operator->add_projection(field.table(), field.meta());
+    project_operator->add_projection(field);
   }
 
   if (child_phy_oper) {
@@ -298,13 +298,15 @@ RC PhysicalPlanGenerator::create_plan(JoinLogicalOperator &join_oper, unique_ptr
 {
   RC rc = RC::SUCCESS;
 
+  // TODO 这里暂时只支持两个表join
   vector<unique_ptr<LogicalOperator>> &child_opers = join_oper.children();
   if (child_opers.size() != 2) {
     LOG_WARN("join operator should have 2 children, but have %d", child_opers.size());
     return RC::INTERNAL;
   }
 
-  unique_ptr<PhysicalOperator> join_physical_oper(new NestedLoopJoinPhysicalOperator);
+//  嵌套循环 join 算子
+  unique_ptr<PhysicalOperator> join_physical_oper(new NestedLoopJoinPhysicalOperator(std::move(join_oper.expressions())));
   for (auto &child_oper : child_opers) {
     unique_ptr<PhysicalOperator> child_physical_oper;
     rc = create(*child_oper, child_physical_oper);
@@ -312,7 +314,6 @@ RC PhysicalPlanGenerator::create_plan(JoinLogicalOperator &join_oper, unique_ptr
       LOG_WARN("failed to create physical child oper. rc=%s", strrc(rc));
       return rc;
     }
-
     join_physical_oper->add_child(std::move(child_physical_oper));
   }
 

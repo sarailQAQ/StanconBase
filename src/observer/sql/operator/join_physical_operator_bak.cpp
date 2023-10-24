@@ -14,11 +14,11 @@ See the Mulan PSL v2 for more details. */
 
 #include "sql/operator/join_physical_operator.h"
 
-NestedLoopJoinPhysicalOperator::NestedLoopJoinPhysicalOperator() {}
-NestedLoopJoinPhysicalOperator::NestedLoopJoinPhysicalOperator(std::vector<std::unique_ptr<Expression>> exprs)
+NestedLoopJoinPhysicalOperator::NestedLoopJoinPhysicalOperator(){}
+NestedLoopJoinPhysicalOperator::NestedLoopJoinPhysicalOperator(std::vector<std:: unique_ptr<Expression>> exprs)
 {
   // 连接条件
-  if (exprs.size() != 0) {
+  if(exprs.size() != 0){
     expression_ = std::move(exprs.front());
     ASSERT(expression_->value_type() == BOOLEANS, "join's condition should be BOOLEAN type");
   }
@@ -39,14 +39,6 @@ RC NestedLoopJoinPhysicalOperator::open(Trx *trx)
 
   rc   = left_->open(trx);
   trx_ = trx;
-
-  rc = right_->open(trx_);
-  while (RC::SUCCESS == (right_->next())) {
-    auto temp = static_cast<RowTuple*>(right_->current_tuple());
-    right_tuple_cache_.emplace_back(std::move(temp->clone()));
-  }
-  rc = right_->close();
-
   return rc;
 }
 
@@ -54,30 +46,37 @@ RC NestedLoopJoinPhysicalOperator::next()
 {
   RC rc = RC::SUCCESS;
   while (true) {
-    // 右边没轮完，直接查右表下一个
-    if (!round_done_) {
+    bool left_need_step = (left_tuple_ == nullptr);
+    if (round_done_) {
+      left_need_step = true;
+    } else {
       rc = right_next();
-      if (rc == RC::RECORD_EOF) {
-        return RC::RECORD_EOF;
-      }
-
-      rc = check_expr(joined_tuple_);
-      // 不满足join条件
       if (rc != RC::SUCCESS) {
-        continue;
+        if (rc == RC::RECORD_EOF) {
+          left_need_step = true;
+        } else {
+          return rc;
+        }
+      } else {
+        rc = check_expr(joined_tuple_);
+        // 不满足join条件
+        if (rc != RC::SUCCESS) {
+          continue;
+        }
+        return rc;  // got one tuple from right
       }
-      return rc;  // got one tuple from right
     }
 
-    // 右边轮完了就左表查下一个
-    rc = left_next();
-    if (rc != RC::SUCCESS) {
-      return rc;
+    if (left_need_step) {
+      rc = left_next();
+      if (rc != RC::SUCCESS) {
+        return rc;
+      }
     }
 
     rc = right_next();
-    if (rc != RC::SUCCESS) {
-      return rc;
+    if (rc == RC::RECORD_EOF) {
+      continue;
     }
     rc = check_expr(joined_tuple_);
     // 不满足join条件
@@ -125,21 +124,34 @@ RC NestedLoopJoinPhysicalOperator::left_next()
 RC NestedLoopJoinPhysicalOperator::right_next()
 {
   RC rc = RC::SUCCESS;
-  if (right_tuple_cache_.empty()) {
-    return RC::RECORD_EOF;
-  }
-
   if (round_done_) {
-    round_done_  = false;
-    right_index_ = 0;
+    if (!right_closed_) {
+      rc            = right_->close();
+      right_closed_ = true;
+      if (rc != RC::SUCCESS) {
+        return rc;
+      }
+    }
+
+    rc = right_->open(trx_);
+    if (rc != RC::SUCCESS) {
+      return rc;
+    }
+    right_closed_ = false;
+
+    round_done_ = false;
   }
 
-  right_tuple_ = right_tuple_cache_[right_index_++];
+  rc = right_->next();
+  if (rc != RC::SUCCESS) {
+    if (rc == RC::RECORD_EOF) {
+      round_done_ = true;
+    }
+    return rc;
+  }
+
+  right_tuple_ = right_->current_tuple();
   joined_tuple_.set_right(right_tuple_);
-
-  if (right_index_ == right_tuple_cache_.size()) {
-    round_done_ = true;
-  }
   return rc;
 }
 

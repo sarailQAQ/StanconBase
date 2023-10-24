@@ -36,6 +36,7 @@ RC ParseStage::handle_request(SQLStageEvent *sql_event)
 
   ParsedSqlResult parsed_sql_result;
 //  解析sql ， 解析配置文件在 sql/parser/lex_sql.l 和 yacc_sql.y
+  // TODO 需要支持多聚合函数的解析
   parse(sql.c_str(), &parsed_sql_result);
   if (parsed_sql_result.sql_nodes().empty()) {
     sql_result->set_return_code(RC::SUCCESS);
