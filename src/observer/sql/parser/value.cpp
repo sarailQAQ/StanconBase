@@ -234,6 +234,49 @@ int Value::compare(const Value &other) const
   LOG_WARN("not supported");
   return -1;  // TODO return rc?
 }
+//like函数实现
+bool Value::like(const Value &other) const
+{
+  //LIKE情况只会出现在字符串匹配中
+  if(this->attr_type_ == CHARS && other.attr_type_ == CHARS)
+  {
+    const std::string pattern = other.get_string();
+    const std::string text = this->get_string();
+    size_t pattern_p = 0; //模式字符串索引
+    size_t text_p = 0; //文本字符串索引
+    while(pattern_p < pattern.length() && text_p < text.length())
+    {
+      if(pattern[pattern_p] == '%')
+      {
+        //匹配零个或多个字符
+        pattern_p++;
+        if (pattern_p == pattern.length()){return true;}
+        char next_char = pattern[pattern_p];
+        while (text_p < text.length() && text[text_p] != next_char){text_p++;}
+        if(text_p == text.length()){return false;}
+      }
+      else if(pattern[pattern_p] == '_')
+      {
+        pattern_p ++;
+        text_p ++;
+      }
+      else if(pattern[pattern_p] != text[text_p])
+      {
+        return false;
+      }
+      else
+      {
+        pattern_p++;
+        text_p++;
+      }
+    }
+    while (pattern_p < pattern.length() && pattern[pattern_p] == '%'){pattern_p++;}
+    return pattern_p == pattern.length() && text_p == text.length();
+  }
+  LOG_WARN(" LIKE unsupported type: %d %d", this->attr_type_,other.attr_type_);
+  return false;
+}
+
 
 int Value::get_int() const
 {

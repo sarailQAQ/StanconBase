@@ -110,6 +110,11 @@ RC ComparisonExpr::compare_value(const Value &left, const Value &right, bool &re
     case GREAT_THAN: {
       result = (cmp_result > 0);
     } break;
+    //实现LIKE值比较
+    //在LIKE中只有左值匹配右值 'ta%' LIKE 't' -> TURE
+    case LIKE: {
+      result = left.like(right);
+    } break;
     default: {
       LOG_WARN("unsupported comparison. %d", comp_);
       rc = RC::INTERNAL;

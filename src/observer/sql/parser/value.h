@@ -75,6 +75,8 @@ public:
   std::string to_string() const;
 
   int compare(const Value &other) const;
+  //实现LIKE函数
+  bool like(const Value &other) const;
 
   const char *data() const;
   int length() const

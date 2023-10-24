@@ -70,9 +70,11 @@ RC SelectStmt::create(Db *db, const SelectSqlNode &select_sql, Stmt *&stmt)
   for (int i = static_cast<int>(select_sql.attributes.size()) - 1; i >= 0; i--) {
     const RelAttrSqlNode &relation_attr = select_sql.attributes[i];
 
+    //is_blank 检查一个以NULL中止的C字符串是否为空白（空格字符）
     if (common::is_blank(relation_attr.relation_name.c_str()) &&
         0 == strcmp(relation_attr.attribute_name.c_str(), "*")) { // 未指定表名，且需要所有字段
       for (Table *table : tables) {
+        //将一个表中除了系统字段外的所有字段添加到一个字段元数据向量
         wildcard_fields(table, query_fields);
       }
 
@@ -100,6 +102,7 @@ RC SelectStmt::create(Db *db, const SelectSqlNode &select_sql, Stmt *&stmt)
         if (0 == strcmp(field_name, "*")) { // 指定表的所有字段
           wildcard_fields(table, query_fields);
         } else { // 指定表，指定字段
+          //在 fields_ 中查找指定名称的字段，并返回对应的字段元数据指针
           const FieldMeta *field_meta = table->table_meta().field(field_name);
           if (nullptr == field_meta) {
             LOG_WARN("no such field. field=%s.%s.%s", db->name(), table->name(), field_name);
