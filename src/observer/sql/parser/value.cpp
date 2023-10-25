@@ -55,12 +55,12 @@ void Value::set_data(char *data, int length)
     } break;
     case INTS: {
       num_value_.int_value_ = *(int *)data;
-      length_ = length;
+      length_               = length;
     } break;
     case DATES: {
       num_value_.int_value_ = *(int *)data;
-//      string_to_date(data, num_value_.int_value_);
-      length_               = length;
+      //      string_to_date(data, num_value_.int_value_);
+      length_ = length;
     } break;
     case FLOATS: {
       num_value_.float_value_ = *(float *)data;
@@ -232,66 +232,94 @@ int Value::compare(const Value &other) const
     return common::compare_float((void *)&this->num_value_.float_value_, (void *)&other_data);
   }
 
-//  else if (this->attr_type_ == CHARS || other.attr_type_ == CHARS) {
-//    return common::compare_string((void *)this->get_string().c_str(),
-//        this->get_string().length(),
-//        (void *)other.get_string().c_str(),
-//        other.get_string().length());
-//  }
+  //  else if (this->attr_type_ == CHARS || other.attr_type_ == CHARS) {
+  //    return common::compare_string((void *)this->get_string().c_str(),
+  //        this->get_string().length(),
+  //        (void *)other.get_string().c_str(),
+  //        other.get_string().length());
+  //  }
   LOG_WARN("not supported");
   return -1;  // TODO return rc?
 }
-//like函数实现
+// like函数实现
 bool Value::like(const Value &other) const
 {
-  //LIKE情况只会出现在字符串匹配中
-  if(this->attr_type_ == CHARS && other.attr_type_ == CHARS)
-  {
-    const std::string pattern = other.get_string();
-    const std::string text = this->get_string();
-    size_t pattern_p = 0; //模式字符串索引
-    size_t text_p = 0; //文本字符串索引
-    while(pattern_p < pattern.length() && text_p < text.length())
-    {
-      if(pattern[pattern_p] == '%')
-      {
-        //匹配零个或多个字符
+  // LIKE情况只会出现在字符串匹配中
+  if (this->attr_type_ == CHARS && other.attr_type_ == CHARS) {
+    const std::string pattern   = other.get_string();
+    const std::string text      = this->get_string();
+    size_t            pattern_p = 0;  // 模式字符串索引
+    size_t            text_p    = 0;  // 文本字符串索引
+    while (pattern_p < pattern.length() && text_p < text.length()) {
+      if (pattern[pattern_p] == '%') {
+        // 匹配零个或多个字符
         pattern_p++;
-        if (pattern_p == pattern.length()){return true;}
+        if (pattern_p == pattern.length()) {
+          return true;
+        }
         char next_char = pattern[pattern_p];
-        while (text_p < text.length() && text[text_p] != next_char){text_p++;}
-        if(text_p == text.length()){return false;}
-      }
-      else if(pattern[pattern_p] == '_')
-      {
-        pattern_p ++;
-        text_p ++;
-      }
-      else if(pattern[pattern_p] != text[text_p])
-      {
+        while (text_p < text.length() && text[text_p] != next_char) {
+          text_p++;
+        }
+        if (text_p == text.length()) {
+          return false;
+        }
+      } else if (pattern[pattern_p] == '_') {
+        pattern_p++;
+        text_p++;
+      } else if (pattern[pattern_p] != text[text_p]) {
         return false;
-      }
-      else
-      {
+      } else {
         pattern_p++;
         text_p++;
       }
     }
-    while (pattern_p < pattern.length() && pattern[pattern_p] == '%'){pattern_p++;}
+    while (pattern_p < pattern.length() && pattern[pattern_p] == '%') {
+      pattern_p++;
+    }
     return pattern_p == pattern.length() && text_p == text.length();
   }
   LOG_WARN(" LIKE unsupported type: %d %d", this->attr_type_,other.attr_type_);
   return false;
 }
 
+// 字符串转double，如果字符串前缀是个double 也允许转，不能转则默认返回0
+static double str_to_double(const std::string &str)
+{
+  std::size_t pos       = 0;
+  bool        has_point = false;
+  while (pos < str.length() && (std::isdigit(str[pos]) || str[pos] == '.')) {
+    if (has_point && str[pos] == '.') {
+      break;
+    }
+    if (!has_point && str[pos] == '.') {
+      has_point = true;
+    }
+    pos++;
+  }
+  if(pos == 0){
+    return 0;
+  }
+
+  std::string numberStr = str.substr(0, pos);
+  try {
+    double number = std::stod(numberStr);
+    return number;
+  } catch (const std::exception &e) {
+    return 0;
+  }
+  return 0.0;
+}
 
 int Value::get_int() const
 {
   switch (attr_type_) {
     case CHARS: {
       try {
-        return (int)(std::stol(str_value_));
+        return (int)str_to_double(str_value_);
+//        return (int)(std::stol(str_value_));
       } catch (std::exception const &ex) {
+        // 非合法数字转换成0
         LOG_TRACE("failed to convert string to number. s=%s, ex=%s", str_value_.c_str(), ex.what());
         return 0;
       }
@@ -321,7 +349,8 @@ float Value::get_float() const
   switch (attr_type_) {
     case CHARS: {
       try {
-        return std::stof(str_value_);
+        return (double)str_to_double(str_value_);
+//        return std::stof(str_value_);
       } catch (std::exception const &ex) {
         LOG_TRACE("failed to convert string to float. s=%s, ex=%s", str_value_.c_str(), ex.what());
         return 0.0;

@@ -45,6 +45,14 @@ RC CastExpr::cast(const Value &value, Value &cast_value) const
   }
 
   switch (cast_type_) {
+    case INTS:{
+      auto val = value.get_int();
+      cast_value.set_int(val);
+    } break;
+    case FLOATS:{
+      auto val = value.get_float();
+      cast_value.set_float(val);
+    } break;
     case BOOLEANS: {
       bool val = value.get_boolean();
       cast_value.set_boolean(val);
@@ -80,8 +88,40 @@ RC CastExpr::try_get_value(Value &value) const
 ////////////////////////////////////////////////////////////////////////////////
 
 ComparisonExpr::ComparisonExpr(CompOp comp, unique_ptr<Expression> left, unique_ptr<Expression> right)
-    : comp_(comp), left_(std::move(left)), right_(std::move(right))
-{}
+{
+  comp_ = comp;
+//  类型相同不用转
+  if(left->value_type() == right->value_type()){
+    left_ = std::move(left);
+    right_ = std::move(right);
+    return;
+  }
+
+  // int、char、日期 遇到浮点 都转浮点
+  if(left->value_type() == AttrType::FLOATS){
+    left_ = std::move(left);
+    right_ = std::unique_ptr<Expression>(new CastExpr(std::move(right),AttrType::FLOATS));
+    return;
+  }
+  if(right->value_type() == AttrType::FLOATS){
+    left_ = std::unique_ptr<Expression>(new CastExpr(std::move(left),AttrType::FLOATS));
+    right_ = std::move(right);
+    return;
+  }
+
+  // 不是浮点 有整形就转整形
+  if(left->value_type() == AttrType::INTS){
+    left_ = std::move(left);
+    right_ = std::unique_ptr<Expression>(new CastExpr(std::move(right),AttrType::INTS));
+    return;
+  }
+  if(right->value_type() == AttrType::INTS){
+    left_ = std::unique_ptr<Expression>(new CastExpr(std::move(left),AttrType::INTS));
+    right_ = std::move(right);
+    return;
+  }
+
+}
 
 ComparisonExpr::~ComparisonExpr()
 {}

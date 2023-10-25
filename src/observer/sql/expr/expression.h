@@ -195,6 +195,7 @@ private:
 class ComparisonExpr : public Expression 
 {
 public:
+  // 创建比较表达式的时候判断两者类型，如果类型不同需要封装一层类型转换表达式，以实现动态转换
   ComparisonExpr(CompOp comp, std::unique_ptr<Expression> left, std::unique_ptr<Expression> right);
   virtual ~ComparisonExpr();
 
