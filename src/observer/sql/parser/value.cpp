@@ -273,7 +273,7 @@ bool Value::like(const Value &other) const
       {
         pattern_p = wildcard_index + 1;
         match_index++;
-        text_p = match_index++;
+        text_p = match_index;
       }
       else
       {
