@@ -248,35 +248,40 @@ bool Value::like(const Value &other) const
   if (this->attr_type_ == CHARS && other.attr_type_ == CHARS) {
     const std::string pattern   = other.get_string();
     const std::string text      = this->get_string();
-    size_t            pattern_p = 0;  // 模式字符串索引
-    size_t            text_p    = 0;  // 文本字符串索引
-    while (pattern_p < pattern.length() && text_p < text.length()) {
-      if (pattern[pattern_p] == '%') {
-        // 匹配零个或多个字符
-        pattern_p++;
-        if (pattern_p == pattern.length()) {
-          return true;
-        }
-        char next_char = pattern[pattern_p];
-        while (text_p < text.length() && text[text_p] != next_char) {
-          text_p++;
-        }
-        if (text_p == text.length()) {
-          return false;
-        }
-      } else if (pattern[pattern_p] == '_') {
-        pattern_p++;
-        text_p++;
-      } else if (pattern[pattern_p] != text[text_p]) {
-        return false;
-      } else {
+    size_t pattern_p = 0;  // 模式字符串索引
+    size_t text_p = 0;  // 文本字符串索引
+    size_t match_index = std::string::npos; //上一个匹配的位置
+    size_t wildcard_index = std::string::npos; //上一个%的位置
+
+    while (text_p < text.length())
+    {
+      //当前为字符匹配或者为通配符'_'
+      if (pattern_p < pattern.length() && (pattern[pattern_p] == text[text_p] || pattern[pattern_p] == '_'))
+      {
         pattern_p++;
         text_p++;
       }
+      //当前字符为通配符'%'
+      else if(pattern_p < pattern.length() && pattern[pattern_p] == '%')
+      {
+        wildcard_index = pattern_p;
+        match_index = text_p;
+        pattern_p++;
+      }
+      //当前字符不匹配，之前存在通配符'%'
+      else if (wildcard_index != std::string::npos)
+      {
+        pattern_p = wildcard_index + 1;
+        match_index++;
+        text_p = match_index++;
+      }
+      else
+      {
+        return false;
+      }
     }
-    while (pattern_p < pattern.length() && pattern[pattern_p] == '%') {
-      pattern_p++;
-    }
+    // 检查是否匹配完整的模式字符串
+    while (pattern_p < pattern.length() && pattern[pattern_p] == '%') {pattern_p++;}
     return pattern_p == pattern.length() && text_p == text.length();
   }
   LOG_WARN(" LIKE unsupported type: %d %d", this->attr_type_,other.attr_type_);
