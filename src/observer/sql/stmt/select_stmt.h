@@ -53,6 +53,12 @@ public:
   {
     return query_fields_;
   }
+
+  const std::vector<OrderField> &order_fields() const
+  {
+    return order_fields_;
+  }
+
   const std::vector<FilterStmt *> &join_filter_stmts() const
   {
     return join_filter_stmts_;
@@ -65,6 +71,7 @@ public:
 
 private:
   std::vector<Field> query_fields_;
+  std::vector<OrderField> order_fields_;        // 排序字段
   std::vector<Table *> tables_;
   std::vector<FilterStmt *> join_filter_stmts_; // 表的连接条件一个on 对应一个FilterStmt
   FilterStmt *filter_stmt_ = nullptr;

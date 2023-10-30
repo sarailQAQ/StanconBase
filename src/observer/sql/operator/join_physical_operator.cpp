@@ -42,7 +42,7 @@ RC NestedLoopJoinPhysicalOperator::open(Trx *trx)
 
   rc = right_->open(trx_);
   while (RC::SUCCESS == (right_->next())) {
-    auto temp = static_cast<RowTuple*>(right_->current_tuple());
+    auto temp = right_->current_tuple();
     right_tuple_cache_.emplace_back(std::move(temp->clone()));
   }
   rc = right_->close();
@@ -96,14 +96,6 @@ RC NestedLoopJoinPhysicalOperator::close()
     LOG_WARN("failed to close left oper. rc=%s", strrc(rc));
   }
 
-  if (!right_closed_) {
-    rc = right_->close();
-    if (rc != RC::SUCCESS) {
-      LOG_WARN("failed to close right oper. rc=%s", strrc(rc));
-    } else {
-      right_closed_ = true;
-    }
-  }
   return rc;
 }
 

@@ -70,8 +70,8 @@ RC SelectStmt::create(Db *db, const SelectSqlNode &select_sql, Stmt *&stmt)
   //  校验每一个需要查出来的字段（属性）
   for (int i = static_cast<int>(select_sql.attributes.size()) - 1; i >= 0; i--) {
     const RelAttrSqlNode &relation_attr = select_sql.attributes[i];
-    //is_blank 检查一个以NULL中止的C字符串是否为空白（空格字符）
-    // 有聚合函数
+    // is_blank 检查一个以NULL中止的C字符串是否为空白（空格字符）
+    //  有聚合函数
     if (relation_attr.agg_func != AggFunc::A_NULL) {
       Table           *table;
       const FieldMeta *field_meta;
@@ -83,7 +83,12 @@ RC SelectStmt::create(Db *db, const SelectSqlNode &select_sql, Stmt *&stmt)
         }
         table = tables[0];
       } else {
-        table = table_map[relation_attr.attribute_name];
+        table = table_map[relation_attr.relation_name];
+      }
+
+      if(table == nullptr){
+        LOG_WARN("can not find table : %s", relation_attr.relation_name.c_str());
+        return RC::SCHEMA_TABLE_NOT_EXIST;
       }
 
       // 字段不是* 就校验字段是否存在
@@ -113,7 +118,7 @@ RC SelectStmt::create(Db *db, const SelectSqlNode &select_sql, Stmt *&stmt)
     if (common::is_blank(relation_attr.relation_name.c_str()) &&
         0 == strcmp(relation_attr.attribute_name.c_str(), "*")) {  // 未指定表名，且需要所有字段
       for (Table *table : tables) {
-        //将一个表中除了系统字段外的所有字段添加到一个字段元数据向量
+        // 将一个表中除了系统字段外的所有字段添加到一个字段元数据向量
         wildcard_fields(table, query_fields);
       }
 
@@ -140,8 +145,8 @@ RC SelectStmt::create(Db *db, const SelectSqlNode &select_sql, Stmt *&stmt)
         Table *table = iter->second;
         if (0 == strcmp(field_name, "*")) {  // 指定表的所有字段
           wildcard_fields(table, query_fields);
-        } else { // 指定表，指定字段
-           //在 fields_ 中查找指定名称的字段，并返回对应的字段元数据指针
+        } else {  // 指定表，指定字段
+                  // 在 fields_ 中查找指定名称的字段，并返回对应的字段元数据指针
           const FieldMeta *field_meta = table->table_meta().field(field_name);
           if (nullptr == field_meta) {
             LOG_WARN("no such field. field=%s.%s.%s", db->name(), table->name(), field_name);
@@ -186,12 +191,8 @@ RC SelectStmt::create(Db *db, const SelectSqlNode &select_sql, Stmt *&stmt)
   if (!select_sql.join_conditions.empty()) {
     for (const auto &item : select_sql.join_conditions) {
       FilterStmt *filter_stmt = nullptr;
-      RC          rc          = FilterStmt::create(db,
-          default_table,
-          &table_map,
-          item.data(),
-          static_cast<int>(item.size()),
-          filter_stmt);
+      RC          rc =
+          FilterStmt::create(db, default_table, &table_map, item.data(), static_cast<int>(item.size()), filter_stmt);
       if (rc != RC::SUCCESS) {
         LOG_WARN("cannot construct filter stmt");
         return rc;
@@ -213,15 +214,47 @@ RC SelectStmt::create(Db *db, const SelectSqlNode &select_sql, Stmt *&stmt)
     return rc;
   }
 
+  // 校验排序字段
+  std::vector<OrderField> order_fields;
+  for (const auto &order_by_item : select_sql.order_by_items) {
+    Table *table = nullptr;
+    const FieldMeta *field_meta;
+    // 找表
+    if (common::is_blank(order_by_item.attr.relation_name.c_str())) {
+      if (tables.size() != 1) {
+        LOG_WARN("invalid. I do not know the attr's table. attr=%s", order_by_item.attr.attribute_name.c_str());
+        return RC::SCHEMA_FIELD_MISSING;
+      }
+      table = tables[0];
+    } else {
+      table = table_map[order_by_item.attr.relation_name];
+    }
+
+    if(table == nullptr){
+      LOG_WARN("can not find table : %s", order_by_item.attr.relation_name.c_str());
+      return RC::SCHEMA_TABLE_NOT_EXIST;
+    }
+
+    // 找字段
+    field_meta = table->table_meta().field(order_by_item.attr.attribute_name.c_str());
+    if (nullptr == field_meta) {
+      LOG_WARN("no such field. field=%s.%s.%s", db->name(), table->name(), order_by_item.attr.attribute_name.c_str());
+      return RC::SCHEMA_FIELD_MISSING;
+    }
+
+    // 校验完成
+    order_fields.emplace_back(OrderField(table, field_meta, order_by_item.order_type));
+  }
+
   // everything alright
   SelectStmt *select_stmt = new SelectStmt();
   // TODO add expression copy
   select_stmt->tables_.swap(tables);
   // 聚合字段和非聚合字段选一个存进去
   select_stmt->query_fields_.swap(!agg_fields_.empty() ? agg_fields_ : query_fields);
-  //  select_stmt->join_filter_stmts_ =
-  select_stmt->filter_stmt_ = filter_stmt;
+  select_stmt->order_fields_.swap(order_fields);
+  select_stmt->filter_stmt_       = filter_stmt;
   select_stmt->join_filter_stmts_ = join_filter_stmts;
-  stmt                      = select_stmt;
+  stmt                            = select_stmt;
   return RC::SUCCESS;
 }

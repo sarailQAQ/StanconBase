@@ -223,6 +223,7 @@ RC PlainCommunicator::write_result_internal(SessionEvent *event, bool &need_disc
   rc = RC::SUCCESS;
   Tuple *tuple = nullptr;
 //  开始操作（查询、更新等）每一行数据
+  int i = 0;
   while (RC::SUCCESS == (rc = sql_result->next_tuple(tuple))) {
     assert(tuple != nullptr);
 
@@ -261,7 +262,11 @@ RC PlainCommunicator::write_result_internal(SessionEvent *event, bool &need_disc
       sql_result->close();
       return rc;
     }
-//    writer_->flush();
+
+    if(i % 100 == 0){
+      // 批量提前打印结果，节约内存
+      writer_->flush();
+    }
   }
 
   if (rc == RC::RECORD_EOF) {

@@ -28,6 +28,10 @@ public:
   NestedLoopJoinPhysicalOperator();
   NestedLoopJoinPhysicalOperator(std::vector<std::unique_ptr<Expression>> expr);
   ~NestedLoopJoinPhysicalOperator(){
+//    for (const auto &item : right_tuple_cache_){
+//      delete item;
+//    }
+//    right_tuple_cache_.clear();
   }
 
   PhysicalOperatorType type() const override

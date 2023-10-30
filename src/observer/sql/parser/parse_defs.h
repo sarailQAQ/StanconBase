@@ -38,7 +38,7 @@ enum AggFunc
 };
 
 /**
- * @defgroup SQLParser SQL Parser 
+ * @defgroup SQLParser SQL Parser
  */
 
 /**
@@ -52,16 +52,25 @@ struct RelAttrSqlNode
 {
   std::string relation_name;   ///< relation name (may be NULL) 表名
   std::string attribute_name;  ///< attribute name              属性名
-  AggFunc agg_func = A_NULL;        ///< aggregation func name       聚合方法名（不为NULL则是对attribute_name进行聚合）
-  std::string alias ;        ///< show name       查询结果的别名
+  AggFunc agg_func = A_NULL;  ///< aggregation func name       聚合方法名（不为NULL则是对attribute_name进行聚合）
+  std::string alias;  ///< show name       查询结果的别名
 };
 
+/**
+ * @brief 排序方式
+ * @ingroup SQLParser
+ */
+enum OrderByType
+{
+  SORT_ASC,   /// 升序
+  SORT_DESC,  /// 降序
+};
 
 /**
  * @brief 描述比较运算符
  * @ingroup SQLParser
  */
-enum CompOp 
+enum CompOp
 {
   EQUAL_TO,     ///< "="
   LESS_EQUAL,   ///< "<="
@@ -70,18 +79,21 @@ enum CompOp
   GREAT_EQUAL,  ///< ">="
   GREAT_THAN,   ///< ">"
   LIKE,         ///< "LIKE"
-  NOT_LIKE,         ///< "LIKE"
+  NOT_LIKE,     ///< "LIKE"
   NO_OP
 };
 
 /**
- * @brief 表示一个条件比较
+ * @brief 表示一个排序项
  * @ingroup SQLParser
- * @details 条件比较就是SQL查询中的 where a>b 这种。
- * 一个条件比较是有两部分组成的，称为左边和右边。
- * 左边和右边理论上都可以是任意的数据，比如是字段（属性，列），也可以是数值常量。
- * 这个结构中记录的仅仅支持字段和值。
+ * @details 排序项就是SQL查询中的 order by t.id desc,t2.id asc 这种。
  */
+struct OrderByItem
+{
+  RelAttrSqlNode attr;                                // 属性
+  OrderByType    order_type = OrderByType::SORT_ASC;  // 排序方式 默认升序
+};
+
 struct ConditionSqlNode
 {
   int             left_is_attr;    ///< TRUE if left-hand side is an attribute
@@ -97,7 +109,7 @@ struct ConditionSqlNode
 
 struct RelWithConditions
 {
-  std::string relation;
+  std::string                   relation;
   std::vector<ConditionSqlNode> conditions;
 };
 
@@ -114,10 +126,12 @@ struct RelWithConditions
 
 struct SelectSqlNode
 {
-  std::vector<RelAttrSqlNode>     attributes;    ///< attributes in select clause
-  std::vector<std::string>        relations;     ///< 查询的表
-  std::vector<std::vector<ConditionSqlNode>>   join_conditions;    ///< 连接条件 一个inner join 对应一个std::vector<ConditionSqlNode>
-  std::vector<ConditionSqlNode>   conditions;    ///< 查询条件，使用AND串联起来多个条件
+  std::vector<RelAttrSqlNode>                attributes;       ///< attributes in select clause
+  std::vector<std::string>                   relations;        ///< 查询的表
+  std::vector<std::vector<ConditionSqlNode>> join_conditions;  ///< 连接条件 一个inner join
+                                                               ///< 对应一个std::vector<ConditionSqlNode>
+  std::vector<ConditionSqlNode> conditions;                    ///< 查询条件，使用AND串联起来多个条件
+  std::vector<OrderByItem>      order_by_items;                /// 排序条件
 };
 
 /**
@@ -158,9 +172,9 @@ struct DeleteSqlNode
  */
 struct UpdateSqlNode
 {
-  std::string                   relation_name;         ///< Relation to update
-  std::string                   attribute_name;        ///< 更新的字段，仅支持一个字段
-  Value                         value;                 ///< 更新的值，仅支持一个字段
+  std::string                   relation_name;   ///< Relation to update
+  std::string                   attribute_name;  ///< 更新的字段，仅支持一个字段
+  Value                         value;           ///< 更新的值，仅支持一个字段
   std::vector<ConditionSqlNode> conditions;
 };
 
@@ -173,9 +187,9 @@ struct UpdateSqlNode
  */
 struct AttrInfoSqlNode
 {
-  AttrType    type;       ///< Type of attribute
-  std::string name;       ///< Attribute name
-  size_t      length;     ///< Length of attribute
+  AttrType    type;    ///< Type of attribute
+  std::string name;    ///< Attribute name
+  size_t      length;  ///< Length of attribute
 };
 
 /**
@@ -185,8 +199,8 @@ struct AttrInfoSqlNode
  */
 struct CreateTableSqlNode
 {
-  std::string                  relation_name;         ///< Relation name
-  std::vector<AttrInfoSqlNode> attr_infos;            ///< attributes
+  std::string                  relation_name;  ///< Relation name
+  std::vector<AttrInfoSqlNode> attr_infos;     ///< attributes
 };
 
 /**
@@ -298,7 +312,7 @@ enum SqlCommandFlag
   SCF_SYNC,
   SCF_SHOW_TABLES,
   SCF_DESC_TABLE,
-  SCF_BEGIN,        ///< 事务开始语句，可以在这里扩展只读事务
+  SCF_BEGIN,  ///< 事务开始语句，可以在这里扩展只读事务
   SCF_COMMIT,
   SCF_CLOG_SYNC,
   SCF_ROLLBACK,
@@ -306,7 +320,7 @@ enum SqlCommandFlag
   SCF_HELP,
   SCF_EXIT,
   SCF_EXPLAIN,
-  SCF_SET_VARIABLE, ///< 设置变量
+  SCF_SET_VARIABLE,  ///< 设置变量
 };
 /**
  * @brief 表示一个SQL语句
@@ -315,21 +329,21 @@ enum SqlCommandFlag
 class ParsedSqlNode
 {
 public:
-  enum SqlCommandFlag       flag;
-  ErrorSqlNode              error;
-  CalcSqlNode               calc;
-  SelectSqlNode             selection;
-  InsertSqlNode             insertion;
-  DeleteSqlNode             deletion;
-  UpdateSqlNode             update;
-  CreateTableSqlNode        create_table;
-  DropTableSqlNode          drop_table;
-  CreateIndexSqlNode        create_index;
-  DropIndexSqlNode          drop_index;
-  DescTableSqlNode          desc_table;
-  LoadDataSqlNode           load_data;
-  ExplainSqlNode            explain;
-  SetVariableSqlNode        set_variable;
+  enum SqlCommandFlag flag;
+  ErrorSqlNode        error;
+  CalcSqlNode         calc;
+  SelectSqlNode       selection;
+  InsertSqlNode       insertion;
+  DeleteSqlNode       deletion;
+  UpdateSqlNode       update;
+  CreateTableSqlNode  create_table;
+  DropTableSqlNode    drop_table;
+  CreateIndexSqlNode  create_index;
+  DropIndexSqlNode    drop_index;
+  DescTableSqlNode    desc_table;
+  LoadDataSqlNode     load_data;
+  ExplainSqlNode      explain;
+  SetVariableSqlNode  set_variable;
 
 public:
   ParsedSqlNode();
@@ -343,11 +357,8 @@ public:
 class ParsedSqlResult
 {
 public:
-  void add_sql_node(std::unique_ptr<ParsedSqlNode> sql_node);
-  std::vector<std::unique_ptr<ParsedSqlNode>> &sql_nodes()
-  {
-    return sql_nodes_;
-  }
+  void                                         add_sql_node(std::unique_ptr<ParsedSqlNode> sql_node);
+  std::vector<std::unique_ptr<ParsedSqlNode>> &sql_nodes() { return sql_nodes_; }
 
 private:
   std::vector<std::unique_ptr<ParsedSqlNode>> sql_nodes_;  ///< 这里记录SQL命令。虽然看起来支持多个，但是当前仅处理一个

@@ -33,6 +33,7 @@ See the Mulan PSL v2 for more details. */
 #include "sql/stmt/insert_stmt.h"
 #include "sql/stmt/delete_stmt.h"
 #include "sql/stmt/explain_stmt.h"
+#include "sql/operator/order_by_logical_operator.h"
 
 using namespace std;
 
@@ -115,7 +116,7 @@ RC LogicalPlanGenerator::create_plan(UpdateStmt *update_stmt, unique_ptr<Logical
 
 RC LogicalPlanGenerator::create_plan(SelectStmt *select_stmt, unique_ptr<LogicalOperator> &logical_operator)
 {
-    // 创建表操作符
+  // 创建表操作符
   unique_ptr<LogicalOperator> table_oper(nullptr);
   // 获取查询中的表和字段信息
 
@@ -125,7 +126,7 @@ RC LogicalPlanGenerator::create_plan(SelectStmt *select_stmt, unique_ptr<Logical
   int expr_index = 0;  // 一个join expr就在第一个第二个表之间，以此类推
   for (Table *table : tables) {
     std::vector<Field> fields;
-    //筛选属于当前表的字段
+    // 筛选属于当前表的字段
     for (const Field &field : all_fields) {
       if (0 == strcmp(field.table_name(), table->name())) {
         fields.push_back(field);
@@ -141,11 +142,11 @@ RC LogicalPlanGenerator::create_plan(SelectStmt *select_stmt, unique_ptr<Logical
       // 带join的表
       // 如果不是第一个表，则创建连接操作符，并将之前的table_oper和当前表的操作符作为子节点
       JoinLogicalOperator *join_oper;
-      if(!select_stmt->join_filter_stmts().empty()){
+      if (!select_stmt->join_filter_stmts().empty()) {
         unique_ptr<ConjunctionExpr> conjunction_expr;
         create_expr(select_stmt->join_filter_stmts()[expr_index++], conjunction_expr);
         join_oper = new JoinLogicalOperator(std::move(conjunction_expr));
-      } else{
+      } else {
         join_oper = new JoinLogicalOperator;
       }
 
@@ -154,7 +155,7 @@ RC LogicalPlanGenerator::create_plan(SelectStmt *select_stmt, unique_ptr<Logical
       table_oper = unique_ptr<LogicalOperator>(join_oper);
     }
   }
-  //创建谓词操作符
+  // 创建谓词操作符
   unique_ptr<LogicalOperator> predicate_oper;
   if (!select_stmt->filter_stmt()->filter_units().empty()) {
     RC rc = create_plan(select_stmt->filter_stmt(), predicate_oper);
@@ -164,7 +165,7 @@ RC LogicalPlanGenerator::create_plan(SelectStmt *select_stmt, unique_ptr<Logical
     }
   }
 
-  //创建投影操作符
+  // 创建投影操作符
   unique_ptr<LogicalOperator> project_oper(new ProjectLogicalOperator(all_fields));
   if (predicate_oper) {
     if (table_oper) {
@@ -177,19 +178,35 @@ RC LogicalPlanGenerator::create_plan(SelectStmt *select_stmt, unique_ptr<Logical
     }
   }
 
+  // 排序算子
+  if (!select_stmt->order_fields().empty()) {
+    std::vector<OrderByType>                 order_by_types;
+    std::vector<std::unique_ptr<Expression>> expressions;
+    for (const auto &item : select_stmt->order_fields()) {
+      order_by_types.emplace_back(item.order_type_);
+      expressions.emplace_back(new FieldExpr(item));
+    }
+    unique_ptr<LogicalOperator> order_oper(new OrderByLogicalOperator(std::move(expressions),order_by_types));
+
+    // 如果有排序算子，则第一层是排序(最后执行)，然后才是映射
+    order_oper->add_child(std::move(project_oper));
+    logical_operator.swap(order_oper);
+    return RC::SUCCESS;
+  }
+
   logical_operator.swap(project_oper);
   return RC::SUCCESS;
 }
 
 RC LogicalPlanGenerator::create_expr(FilterStmt *filter_stmt, unique_ptr<ConjunctionExpr> &conjunction_expr)
 {
-  //创建比较表达式
+  // 创建比较表达式
   std::vector<unique_ptr<Expression>> cmp_exprs;
   const std::vector<FilterUnit *>    &filter_units = filter_stmt->filter_units();
   for (const FilterUnit *filter_unit : filter_units) {
     const FilterObj &filter_obj_left  = filter_unit->left();
     const FilterObj &filter_obj_right = filter_unit->right();
-    //创建左右表达式
+    // 创建左右表达式
     unique_ptr<Expression> left(filter_obj_left.is_attr
                                     ? static_cast<Expression *>(new FieldExpr(filter_obj_left.field))
                                     : static_cast<Expression *>(new ValueExpr(filter_obj_left.value)));
@@ -204,7 +221,7 @@ RC LogicalPlanGenerator::create_expr(FilterStmt *filter_stmt, unique_ptr<Conjunc
 
   unique_ptr<PredicateLogicalOperator> predicate_oper;
   if (!cmp_exprs.empty()) {
-    //如果存在比较表达式，则创建合取表达式，并将其作为谓词操作符
+    // 如果存在比较表达式，则创建合取表达式，并将其作为谓词操作符
     conjunction_expr = unique_ptr<ConjunctionExpr>(new ConjunctionExpr(ConjunctionExpr::Type::AND, cmp_exprs));
   }
   return RC::SUCCESS;
@@ -214,7 +231,7 @@ RC LogicalPlanGenerator::create_plan(FilterStmt *filter_stmt, unique_ptr<Logical
 {
   unique_ptr<ConjunctionExpr> conjunction_expr;
   create_expr(filter_stmt, conjunction_expr);
-  if(conjunction_expr){
+  if (conjunction_expr) {
     unique_ptr<PredicateLogicalOperator> predicate_oper =
         unique_ptr<PredicateLogicalOperator>(new PredicateLogicalOperator(std::move(conjunction_expr)));
     logical_operator = std::move(predicate_oper);

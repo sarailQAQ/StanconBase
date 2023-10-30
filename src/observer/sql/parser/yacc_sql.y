@@ -63,6 +63,7 @@ ArithmeticExpr *create_arithmetic_expression(ArithmeticExpr::Type type,
         CALC
         SELECT
         DESC
+        ASC
         SHOW
         SYNC
         INSERT
@@ -108,6 +109,8 @@ ArithmeticExpr *create_arithmetic_expression(ArithmeticExpr::Type type,
         MAX
         MIN
         AVG
+        ORDER
+        BY
 
 /** union 中定义各种数据类型，真实生成的代码也是union类型，所以不能有非POD类型的数据 **/
 %union {
@@ -126,6 +129,9 @@ ArithmeticExpr *create_arithmetic_expression(ArithmeticExpr::Type type,
   std::vector<RelAttrSqlNode> *     rel_attr_list;
   std::vector<std::string> *        relation_list;
   std::vector<RelWithConditions> *  join_relation_list;
+  std::vector<OrderByItem> *        order_by_item_list;
+  OrderByItem *                     order_by_item;
+  OrderByType                       order_type;
   char *                            string;
   int                               number;
   float                             floats;
@@ -144,6 +150,10 @@ ArithmeticExpr *create_arithmetic_expression(ArithmeticExpr::Type type,
 %type <number>              number
 %type <comp>                comp_op
 %type <rel_attr>            rel_attr
+%type <order_by_item_list>  order_by_item_list
+%type <order_by_item_list>  order_by
+%type <order_type>          order_type
+%type <order_by_item>       order_by_item
 %type <agg_func>            agg_func
 %type <attr_infos>          attr_def_list
 %type <attr_info>           attr_def
@@ -431,7 +441,7 @@ update_stmt:      /*  update 语句的语法解析树*/
     }
     ;
 select_stmt:        /*  select 语句的语法解析树*/
-    SELECT select_attr FROM ID rel_list where
+    SELECT select_attr FROM ID rel_list where order_by
     {
       std::vector<std::string> relations;
 
@@ -463,9 +473,17 @@ select_stmt:        /*  select 语句的语法解析树*/
         //$$->selection.conditions.swap(*$6);
         delete $6;
       }
+
+      if ($7 != nullptr) {
+        // $$->selection.order_by_items.insert($$->selection.conditions.end(), $7->begin(), $7->end());
+        $$->selection.order_by_items.swap(*$7);
+        delete $7;
+      }
+
       free($4);
     }
     ;
+
 calc_stmt:
     CALC expression_list
     {
@@ -581,6 +599,54 @@ agg_func:
     | AVG LBRACE rel_attr RBRACE {
         $3->agg_func = AggFunc::A_AVG;
         $$ = std::move($3);
+    }
+    ;
+
+order_by:
+    /* empty */
+    {
+        $$ = nullptr;
+    }
+    | ORDER BY order_by_item_list {
+        $$ = $3;
+    }
+    ;
+
+order_by_item_list:
+    /* empty */
+    {
+        $$ = nullptr;
+    }
+    | order_by_item {
+        $$ = new std::vector<OrderByItem>;
+        $$->emplace_back(*$1);
+        delete $1;
+    }
+    | order_by_item COMMA order_by_item_list {
+        $$ = $3;
+        $$->emplace_back(*$1);
+        delete $1;
+    }
+;
+order_by_item:
+    rel_attr order_type {
+      $$ = new OrderByItem;
+      $$->attr = *$1;
+      $$->order_type = $2;
+      free($1);
+    }
+    ;
+
+order_type:
+    /* empty */
+    {
+        $$ = OrderByType::SORT_ASC;
+    }
+    | ASC {
+        $$ = OrderByType::SORT_ASC;
+    }
+    | DESC {
+        $$ = OrderByType::SORT_DESC;
     }
     ;
 

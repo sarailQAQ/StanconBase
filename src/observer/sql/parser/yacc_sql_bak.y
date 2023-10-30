@@ -87,6 +87,8 @@ ArithmeticExpr *create_arithmetic_expression(ArithmeticExpr::Type type,
         WHERE
         AND
         SET
+        INNER
+        JOIN
         ON
         LOAD
         DATA
@@ -98,6 +100,9 @@ ArithmeticExpr *create_arithmetic_expression(ArithmeticExpr::Type type,
         LE
         GE
         NE
+        // like已经在词法解析之中解析出
+        LIKE_C
+        NOT
         COUNT
         SUM
         MAX
@@ -120,6 +125,7 @@ ArithmeticExpr *create_arithmetic_expression(ArithmeticExpr::Type type,
   std::vector<ConditionSqlNode> *   condition_list;
   std::vector<RelAttrSqlNode> *     rel_attr_list;
   std::vector<std::string> *        relation_list;
+  std::vector<RelWithConditions> *  join_relation_list;
   char *                            string;
   int                               number;
   float                             floats;
@@ -146,7 +152,7 @@ ArithmeticExpr *create_arithmetic_expression(ArithmeticExpr::Type type,
 %type <condition_list>      condition_list
 %type <rel_attr_list>       select_attr
 %type <rel_attr_list>       agg_func_list
-%type <relation_list>       rel_list
+%type <join_relation_list>  rel_list
 %type <rel_attr_list>       attr_list
 %type <expression>          expression
 %type <expression_list>     expression_list
@@ -427,20 +433,34 @@ update_stmt:      /*  update 语句的语法解析树*/
 select_stmt:        /*  select 语句的语法解析树*/
     SELECT select_attr FROM ID rel_list where
     {
+      std::vector<std::string> relations;
+
       $$ = new ParsedSqlNode(SCF_SELECT);
       if ($2 != nullptr) {
         $$->selection.attributes.swap(*$2);
         delete $2;
       }
       if ($5 != nullptr) {
-        $$->selection.relations.swap(*$5);
+
+        for(auto item: *$5) {
+            relations.emplace_back(item.relation);
+            if(!item.conditions.empty()){
+                auto join_condition = new std::vector<ConditionSqlNode>;
+                join_condition->insert(join_condition->end(),item.conditions.begin(), item.conditions.end());
+                $$->selection.join_conditions.emplace_back(*join_condition);
+                delete join_condition;
+            }
+        }
+        std::reverse($$->selection.join_conditions.begin(), $$->selection.join_conditions.end());
+        $$->selection.relations.swap(relations);
         delete $5;
       }
       $$->selection.relations.push_back($4);
       std::reverse($$->selection.relations.begin(), $$->selection.relations.end());
 
       if ($6 != nullptr) {
-        $$->selection.conditions.swap(*$6);
+        $$->selection.conditions.insert($$->selection.conditions.end(), $6->begin(), $6->end());
+        //$$->selection.conditions.swap(*$6);
         delete $6;
       }
       free($4);
@@ -623,14 +643,28 @@ rel_list:
     {
       $$ = nullptr;
     }
+    | INNER JOIN ID ON condition_list rel_list {
+      if ($6 != nullptr) {
+        $$ = $6;
+      } else {
+        $$ = new std::vector<RelWithConditions>;
+      }
+      auto tmp = new RelWithConditions;
+      tmp->relation = $3;
+      tmp->conditions.swap(*$5);
+      $$->emplace_back(*tmp);
+      free($3);
+      free($5);
+    }
     | COMMA ID rel_list {
       if ($3 != nullptr) {
         $$ = $3;
       } else {
-        $$ = new std::vector<std::string>;
+        $$ = new std::vector<RelWithConditions>;
       }
-
-      $$->push_back($2);
+      auto tmp = new RelWithConditions;
+      tmp->relation = $2;
+      $$->emplace_back(*tmp);
       free($2);
     }
     ;
@@ -717,6 +751,8 @@ comp_op:
     | LE { $$ = LESS_EQUAL; }
     | GE { $$ = GREAT_EQUAL; }
     | NE { $$ = NOT_EQUAL; }
+    | LIKE_C{$$ = LIKE;}
+    | NOT LIKE_C{$$ = NOT_LIKE;}
     ;
 
 load_data_stmt:

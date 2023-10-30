@@ -130,6 +130,8 @@ public:
     }
     return str;
   }
+
+  virtual Tuple *clone() const = 0;
 };
 
 /**
@@ -149,13 +151,12 @@ public:
     speces_.clear();
   }
 
-  RowTuple *clone(){
+  Tuple *clone()  const override{
     RowTuple *new_tuple = new RowTuple();
     new_tuple->record_ = new Record(*record_); // 数据深拷贝，元数据浅拷贝
     new_tuple->speces_ = speces_;
     new_tuple->table_ = table_;
     return new_tuple;
-
   }
 
 
@@ -270,6 +271,13 @@ public:
     speces_.clear();
   }
 
+  Tuple *clone() const override {
+    ProjectTuple *new_tuple = new ProjectTuple();
+    new_tuple->tuple_ = static_cast<RowTuple*>(tuple_)->clone(); // 数据深拷贝，元数据浅拷贝
+    new_tuple->speces_ = speces_;
+    return new_tuple;
+  }
+
   Tuple * tuple()
   {
     return tuple_;
@@ -344,6 +352,11 @@ public:
   {
   }
 
+  Tuple *clone()  const override{
+    LOG_WARN("未实现");
+    return nullptr;
+  }
+
   int cell_num() const override
   {
     return expressions_.size();
@@ -384,6 +397,12 @@ public:
   ValueListTuple() = default;
   virtual ~ValueListTuple() = default;
 
+  Tuple *clone()  const override{
+    ValueListTuple *new_tuple = new ValueListTuple();
+    new_tuple->cells_ = cells_;
+    return new_tuple;
+  }
+
   void set_cells(const std::vector<Value> &cells)
   {
     cells_ = cells;
@@ -423,6 +442,13 @@ class JoinedTuple : public Tuple
 public:
   JoinedTuple() = default;
   virtual ~JoinedTuple() = default;
+
+  Tuple *clone()  const override{
+    JoinedTuple *new_tuple = new JoinedTuple();
+    new_tuple->left_ = left_->clone(); // 数据深拷贝，元数据浅拷贝
+    new_tuple->right_ = right_->clone(); // 数据深拷贝，元数据浅拷贝
+    return new_tuple;
+  }
 
   void set_left(Tuple *left)
   {
