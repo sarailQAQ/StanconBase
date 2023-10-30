@@ -38,27 +38,40 @@ RC OrderByPhysicalOperator::open(Trx *trx)
     tuple_cache_.emplace_back(std::move(temp->clone()));
   }
   rc = children_[0]->close();
-
+  auto &expressions = expressions_;
+  auto &order_by_types = order_by_types_;
   // 开始基于各个比较字段排序
-  // TODO 多个排序可以整合成一次排序
-  for (int i = 0; i < expressions_.size(); i++) {
-    auto &sort_expr   = expressions_[i];
-    auto  orderByType = order_by_types_[i];
-    // 自定义比较逻辑
-    auto compareTuple = [&sort_expr](const Tuple *tuple1, const Tuple *tuple2) {
-      Value left;
-      Value right;
+  // 自定义比较逻辑
+  auto compareTuple = [&expressions,order_by_types](const Tuple *tuple1, const Tuple *tuple2) {
+    Value left;
+    Value right;
+    for(int i = 0; i < order_by_types.size();i++){
+      auto &sort_expr = expressions[i];
       sort_expr->get_value(*tuple1, left);
       sort_expr->get_value(*tuple2, right);
-      return left.compare(right) > 0;
-    };
-
-    if (orderByType == OrderByType::SORT_DESC) {
-      std::sort(tuple_cache_.begin(), tuple_cache_.end(), compareTuple);
-    } else {
-      std::sort(tuple_cache_.rbegin(), tuple_cache_.rend(), compareTuple);
+      auto res = left.compare(right);
+      if(res == 0){
+        continue;
+      }
+      return order_by_types[i] == OrderByType::SORT_ASC ? res < 0 : res > 0;
     }
-  }
+    return false;
+  };
+
+  std::sort(tuple_cache_.begin(), tuple_cache_.end(), compareTuple);
+
+  // TODO 多个排序可以整合成一次排序
+//  for (int i = 0; i < expressions_.size(); i++) {
+//    auto &sort_expr   = expressions_[i];
+//    auto  orderByType = order_by_types_[i];
+//
+//
+//    if (orderByType == OrderByType::SORT_DESC) {
+//      std::sort(tuple_cache_.begin(), tuple_cache_.end(), compareTuple);
+//    } else {
+//      std::sort(tuple_cache_.rbegin(), tuple_cache_.rend(), compareTuple);
+//    }
+//  }
 
   if (rc != RC::SUCCESS) {
     LOG_WARN("order by 子算子关闭失败");

@@ -608,6 +608,7 @@ order_by:
         $$ = nullptr;
     }
     | ORDER BY order_by_item_list {
+        std::reverse($3->begin(), $3->end());
         $$ = $3;
     }
     ;
