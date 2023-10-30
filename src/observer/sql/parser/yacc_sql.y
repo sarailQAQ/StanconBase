@@ -285,7 +285,24 @@ desc_table_stmt:
       free($2);
     }
     ;
+create_table_stmt:    /*create table 语句的语法解析树*/
+    CREATE TABLE ID LBRACE attr_def attr_def_list RBRACE
+    {
+      $$ = new ParsedSqlNode(SCF_CREATE_TABLE);
+      CreateTableSqlNode &create_table = $$->create_table;
+      create_table.relation_name = $3;
+      free($3);
 
+      std::vector<AttrInfoSqlNode> *src_attrs = $6;
+
+      if (src_attrs != nullptr) {
+        create_table.attr_infos.swap(*src_attrs);
+      }
+      create_table.attr_infos.emplace_back(*$5);
+      std::reverse(create_table.attr_infos.begin(), create_table.attr_infos.end());
+      delete $5;
+    }
+    ;
 create_index_stmt:    /*create index 语句的语法解析树*/
     CREATE INDEX ID ON ID LBRACE rel_attr attr_list RBRACE
     {
@@ -313,24 +330,8 @@ drop_index_stmt:      /*drop index 语句的语法解析树*/
       free($5);
     }
     ;
-create_table_stmt:    /*create table 语句的语法解析树*/
-    CREATE TABLE ID LBRACE attr_def attr_def_list RBRACE
-    {
-      $$ = new ParsedSqlNode(SCF_CREATE_TABLE);
-      CreateTableSqlNode &create_table = $$->create_table;
-      create_table.relation_name = $3;
-      free($3);
 
-      std::vector<AttrInfoSqlNode> *src_attrs = $6;
 
-      if (src_attrs != nullptr) {
-        create_table.attr_infos.swap(*src_attrs);
-      }
-      create_table.attr_infos.emplace_back(*$5);
-      std::reverse(create_table.attr_infos.begin(), create_table.attr_infos.end());
-      delete $5;
-    }
-    ;
 attr_def_list:
     /* empty */
     {

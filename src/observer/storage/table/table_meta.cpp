@@ -80,7 +80,7 @@ RC TableMeta::init(int32_t table_id, const char *name, int field_num, const Attr
     rc = fields_[i + trx_field_num].init(attr_info.name.c_str(), 
             attr_info.type, field_offset, attr_info.length, true/*visible*/,attr_info.is_nullable);
     if (rc != RC::SUCCESS) {
-      LOG_ERROR("Failed to init field meta. table name=%s, field name: %s", name, attr_info.name.c_str());
+      LOG_ERROR("Failed to init field meta. table name=%s, field_str name: %s", name, attr_info.name.c_str());
       return rc;
     }
 
@@ -182,7 +182,7 @@ const IndexMeta *TableMeta::index(const char *name) const
 const IndexMeta *TableMeta::find_index_by_field(const char *field) const
 {
   for (const IndexMeta &index : indexes_) {
-    if (0 == strcmp(index.field(), field)) {
+    if (0 == strcmp(index.field_str(), field)) {
       return &index;
     }
   }

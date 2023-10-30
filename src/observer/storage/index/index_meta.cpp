@@ -88,7 +88,7 @@ const char *IndexMeta::name() const
   return name_.c_str();
 }
 
-const char *IndexMeta::field() const
+const char *IndexMeta::field_str() const
 {
   return fields_str.c_str();
 }

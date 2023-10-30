@@ -113,7 +113,7 @@ seda使用异步事件的方式，在线程池中调度。每个事件(event)，
 `DefaultStorageStage` 处理 `StorageEvent`
 
 ### 元数据管理模块
-元数据是指数据库一些核心概念，包括db、table、field、index等，记录它们的信息。比如db，记录db文件所属目录；field，记录字段的类型、长度、偏移量等。代码文件分散于`src/observer/storage/table,field,index`中，文件名中包含`meta`关键字。
+元数据是指数据库一些核心概念，包括db、table、field、index等，记录它们的信息。比如db，记录db文件所属目录；field_str，记录字段的类型、长度、偏移量等。代码文件分散于`src/observer/storage/table,field_str,index`中，文件名中包含`meta`关键字。
 
 ### 客户端
 这里的客户端提供了一种测试miniob的方法。从标准输入接收用户输入，将请求发给服务端，并展示返回结果。这里简化了输入的处理，用户输入一行，就认为是一个命令。

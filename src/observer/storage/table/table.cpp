@@ -151,19 +151,24 @@ RC Table::open(const char *meta_file, const char *base_dir)
 
   const int index_num = table_meta_.index_num();
   for (int i = 0; i < index_num; i++) {
+    std::vector<const FieldMeta*> index_field_metas;
     const IndexMeta *index_meta = table_meta_.index(i);
-    const FieldMeta *field_meta = table_meta_.field(index_meta->field());
-    if (field_meta == nullptr) {
-      LOG_ERROR("Found invalid index meta info which has a non-exists field. table=%s, index=%s, field=%s",
-                name(), index_meta->name(), index_meta->field());
-      // skip cleanup
-      //  do all cleanup action in destructive Table function
-      return RC::INTERNAL;
+    for (auto& field_name : index_meta->fields()) {
+      const FieldMeta *field_meta = table_meta_.field(field_name.c_str());
+      if (field_meta == nullptr) {
+        LOG_ERROR("Found invalid index meta info which has a non-exists field. table=%s, index=%s, field=%s",
+                name(), index_meta->name(), index_meta->field_str());
+        // skip cleanup
+        //  do all cleanup action in destructive Table function
+        return RC::INTERNAL;
+      }
+
+      index_field_metas.push_back(field_meta);
     }
 
     BplusTreeIndex *index      = new BplusTreeIndex();
     std::string     index_file = table_index_file(base_dir, name(), index_meta->name());
-    rc                         = index->open(index_file.c_str(), *index_meta, *field_meta);
+    rc                         = index->open(index_file.c_str(), *index_meta, index_field_metas);
     if (rc != RC::SUCCESS) {
       delete index;
       LOG_ERROR("Failed to open index. table=%s, index=%s, file=%s, rc=%s",

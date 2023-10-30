@@ -73,7 +73,7 @@ RC ExecuteStage::handle_request_with_physical_operator(SQLStageEvent *sql_event)
       bool with_table_name = select_stmt->tables().size() > 1;
 
       for (const Field &field : select_stmt->query_fields()) {
-//        schema.append_cell(field.alias());
+//        schema.append_cell(field_str.alias());
         if(!common::is_blank(field.alias())){
           schema.append_cell(field.alias());
           continue;

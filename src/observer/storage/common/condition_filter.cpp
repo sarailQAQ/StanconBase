@@ -90,7 +90,7 @@ RC DefaultConditionFilter::init(Table &table, const ConditionSqlNode &condition)
     right.is_attr = true;
     const FieldMeta *field_right = table_meta.field(condition.right_attr.attribute_name.c_str());
     if (nullptr == field_right) {
-      LOG_WARN("No such field in condition. %s.%s", table.name(), condition.right_attr.attribute_name.c_str());
+      LOG_WARN("No such field_str in condition. %s.%s", table.name(), condition.right_attr.attribute_name.c_str());
       return RC::SCHEMA_FIELD_MISSING;
     }
     right.attr_length = field_right->len();

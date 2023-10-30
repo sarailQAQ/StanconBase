@@ -45,7 +45,7 @@ RC CreateIndexStmt::create(Db *db, const CreateIndexSqlNode &create_index, Stmt 
     return RC::SCHEMA_TABLE_NOT_EXIST;
   }
 
-  std::vector<const FieldMeta *> field_metas(create_index.attribute_names.size());
+  std::vector<const FieldMeta *> field_metas;
   for (const auto& attr : create_index.attribute_names) {
     const FieldMeta *field_meta = table->table_meta().field(attr.attribute_name.c_str());
     if (nullptr == field_meta) {

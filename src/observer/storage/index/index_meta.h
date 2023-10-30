@@ -40,7 +40,9 @@ public:
 
 public:
   const char *name() const;
-  const char *field() const;
+  const char *field_str() const;
+
+  std::vector<std::string> fields() const { return fields_; }
 
   void desc(std::ostream &os) const;
 
@@ -50,6 +52,6 @@ public:
 
 protected:
   std::string name_;   // index's name
-  std::vector<std::string> fields_;  // field's name
+  std::vector<std::string> fields_;  // field_str's name
   std::string fields_str;
 };
