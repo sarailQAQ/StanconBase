@@ -74,7 +74,7 @@ RC BplusTreeIndex::open(const char *file_name, const IndexMeta &index_meta, std:
 
   Index::init(index_meta, field_metas);
 
-  RC rc = index_handler_.open(file_name);
+  RC rc = index_handler_.open(file_name, field_metas);
   if (RC::SUCCESS != rc) {
     LOG_WARN("Failed to open index_handler, file_name:%s, index:%s, field:%s, rc:%s",
         file_name,

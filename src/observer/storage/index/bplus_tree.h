@@ -247,16 +247,22 @@ private:
  */
 struct IndexFileHeader 
 {
+  static size_t class_size() {
+      return sizeof(PageNum ) + sizeof (int32_t) * 3;
+  }
   IndexFileHeader()
   {
-    memset(this, 0, sizeof(IndexFileHeader));
+    memset(this, 0, class_size());
     root_page = BP_INVALID_PAGE_NUM;
+    attr_types_.clear();
+    attr_lengths_.clear();
   }
+
   PageNum root_page;          ///< 根节点在磁盘中的页号
   int32_t internal_max_size;  ///< 内部节点最大的键值对数
   int32_t leaf_max_size;      ///< 叶子节点最大的键值对数
-  int32_t attr_length;        ///< 键值的长度
   int32_t key_length;         ///< attr length + sizeof(RID)
+
   std::vector<int32_t> attr_lengths_;  ///< 每个属性的长度
   std::vector<AttrType> attr_types_;   ///< 每个属性的类型
 
@@ -264,8 +270,7 @@ struct IndexFileHeader
   {
     std::stringstream ss;
 
-    ss << "attr_length:" << attr_length << ","
-       << "key_length:" << key_length << ","
+    ss << "key_length:" << key_length << ","
        << "root_page:" << root_page << ","
        << "internal_max_size:" << internal_max_size << ","
        << "leaf_max_size:" << leaf_max_size << ";"
@@ -512,7 +517,7 @@ public:
    * 如果方法调用成功，则indexHandle为指向被打开的索引句柄的指针。
    * 索引句柄用于在索引中插入或删除索引项，也可用于索引的扫描
    */
-  RC open(const char *file_name);
+  RC open(const char *file_name, std::vector<const FieldMeta*>& field_metas);
 
   /**
    * 关闭句柄indexHandle对应的索引文件

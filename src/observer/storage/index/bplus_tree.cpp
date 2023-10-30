@@ -8,10 +8,6 @@ EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
 MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 See the Mulan PSL v2 for more details. */
 
-//
-// Created by Xie Meiyi
-// Rewritten by Longda & Wangyunlai
-//
 #include "storage/index/bplus_tree.h"
 #include "storage/buffer/disk_buffer_pool.h"
 #include "common/log/log.h"
@@ -780,7 +776,7 @@ RC BplusTreeHandler::create(const char *file_name, std::vector<AttrType> attr_ty
   }
 
   int32_t len = 0;
-  for (int& attr_len : attr_lens) {
+  for (auto & attr_len : attr_lens) {
     len += attr_len;
   }
 
@@ -793,7 +789,9 @@ RC BplusTreeHandler::create(const char *file_name, std::vector<AttrType> attr_ty
 
   char *pdata = header_frame->data();
   IndexFileHeader *file_header = (IndexFileHeader *)pdata;
-  file_header->attr_length = len;
+
+  file_header->attr_lengths_ = attr_lens;
+
   file_header->key_length = len + sizeof(RID);
   file_header->attr_types_ = attr_types;
   file_header->internal_max_size = internal_max_size;
@@ -824,7 +822,7 @@ RC BplusTreeHandler::create(const char *file_name, std::vector<AttrType> attr_ty
   return RC::SUCCESS;
 }
 
-RC BplusTreeHandler::open(const char *file_name)
+RC BplusTreeHandler::open(const char *file_name, std::vector<const FieldMeta*>& field_metas)
 {
   if (disk_buffer_pool_ != nullptr) {
     LOG_WARN("%s has been opened before index.open.", file_name);
@@ -848,7 +846,7 @@ RC BplusTreeHandler::open(const char *file_name)
   }
 
   char *pdata = frame->data();
-  memcpy(&file_header_, pdata, sizeof(IndexFileHeader));
+  memcpy(&file_header_, pdata, IndexFileHeader::class_size());
   header_dirty_ = false;
   disk_buffer_pool_ = disk_buffer_pool;
 
@@ -862,6 +860,12 @@ RC BplusTreeHandler::open(const char *file_name)
   // close old page_handle
   disk_buffer_pool->unpin_page(frame);
 
+  file_header_.attr_types_.clear();
+  file_header_.attr_lengths_.clear();
+  for (auto& field_meta : field_metas) {
+    file_header_.attr_types_.push_back(field_meta->type());
+    file_header_.attr_lengths_.push_back(field_meta->len());
+  }
   key_comparator_.init(file_header_.attr_types_, file_header_.attr_lengths_);
   key_printer_.init(file_header_.attr_types_, file_header_.attr_lengths_);
   LOG_INFO("Successfully open index %s", file_name);
@@ -1909,8 +1913,10 @@ RC BplusTreeScanner::fix_user_key(
   assert(strlen(user_key) >= static_cast<size_t>(key_len));
 
   *should_inclusive = false;
-
-  int32_t attr_length = tree_handler_.file_header_.attr_length;
+  auto attr_length = 0;
+  for (int& i : tree_handler_.file_header_.attr_lengths_) {
+    attr_length += i;
+  }
   char *key_buf = new (std::nothrow) char[attr_length];
   if (nullptr == key_buf) {
     return RC::NOMEM;
