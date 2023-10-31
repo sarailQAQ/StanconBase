@@ -88,6 +88,7 @@ DESC                                    RETURN_TOKEN(DESC);
 ASC                                     RETURN_TOKEN(ASC);
 CREATE                                  RETURN_TOKEN(CREATE);
 DROP                                    RETURN_TOKEN(DROP);
+NULL                                    RETURN_TOKEN(NULL_T);
 NOT                                     RETURN_TOKEN(NOT);
 LIKE                                    RETURN_TOKEN(LIKE_C);
 TABLE                                   RETURN_TOKEN(TABLE);

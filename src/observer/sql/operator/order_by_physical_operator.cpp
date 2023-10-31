@@ -60,19 +60,6 @@ RC OrderByPhysicalOperator::open(Trx *trx)
 
   std::sort(tuple_cache_.begin(), tuple_cache_.end(), compareTuple);
 
-  // TODO 多个排序可以整合成一次排序
-//  for (int i = 0; i < expressions_.size(); i++) {
-//    auto &sort_expr   = expressions_[i];
-//    auto  orderByType = order_by_types_[i];
-//
-//
-//    if (orderByType == OrderByType::SORT_DESC) {
-//      std::sort(tuple_cache_.begin(), tuple_cache_.end(), compareTuple);
-//    } else {
-//      std::sort(tuple_cache_.rbegin(), tuple_cache_.rend(), compareTuple);
-//    }
-//  }
-
   if (rc != RC::SUCCESS) {
     LOG_WARN("order by 子算子关闭失败");
     return rc;

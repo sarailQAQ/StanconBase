@@ -101,6 +101,7 @@ ArithmeticExpr *create_arithmetic_expression(ArithmeticExpr::Type type,
         LE
         GE
         NE
+        NULL_T
         // like已经在词法解析之中解析出
         LIKE_C
         NOT
@@ -135,6 +136,7 @@ ArithmeticExpr *create_arithmetic_expression(ArithmeticExpr::Type type,
   char *                            string;
   int                               number;
   float                             floats;
+  bool                              bools;
 }
 
 %token <number> NUMBER
@@ -145,6 +147,7 @@ ArithmeticExpr *create_arithmetic_expression(ArithmeticExpr::Type type,
 
 /** type 定义了各种解析后的结果输出的是什么类型。类型对应了 union 中的定义的成员变量名称 **/
 %type <number>              type
+%type <bools>               nullable
 %type <condition>           condition
 %type <value>               value
 %type <number>              number
@@ -341,21 +344,35 @@ attr_def_list:
     ;
     
 attr_def:
-    ID type LBRACE number RBRACE 
+    ID type LBRACE number RBRACE nullable
     {
       $$ = new AttrInfoSqlNode;
       $$->type = (AttrType)$2;
       $$->name = $1;
       $$->length = $4;
+      $$->is_nullable = $6;
       free($1);
     }
-    | ID type
+    | ID type nullable
     {
       $$ = new AttrInfoSqlNode;
       $$->type = (AttrType)$2;
       $$->name = $1;
       $$->length = 4;
+      $$->is_nullable = $3;
       free($1);
+    }
+    ;
+nullable:
+    /* empty */
+    {
+        $$ = false;
+    }
+    | NULL_T {
+        $$ = true;
+    }
+    | NOT NULL_T {
+        $$ = false;
     }
     ;
 number:

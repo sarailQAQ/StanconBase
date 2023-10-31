@@ -190,6 +190,7 @@ struct AttrInfoSqlNode
   AttrType    type;    ///< Type of attribute
   std::string name;    ///< Attribute name
   size_t      length;  ///< Length of attribute
+  bool        is_nullable = false; /// 默认不允许null
 };
 
 /**
