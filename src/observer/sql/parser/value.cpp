@@ -20,7 +20,7 @@ See the Mulan PSL v2 for more details. */
 #include "common/lang/string.h"
 #include "common/date.h"
 
-const char *ATTR_TYPE_NAME[] = {"undefined", "chars", "ints", "dates", "floats", "booleans"};
+const char *ATTR_TYPE_NAME[] = {"undefined","nulls", "chars", "ints", "dates", "floats", "booleans"};
 
 const char *attr_type_to_string(AttrType type)
 {
@@ -50,6 +50,9 @@ Value::Value(const char *s, int len /*= 0*/) { set_string(s, len); }
 void Value::set_data(char *data, int length)
 {
   switch (attr_type_) {
+    case NULLS: {
+      set_null();
+    }break;
     case CHARS: {
       set_string(data, length);
     } break;
@@ -112,9 +115,17 @@ void Value::set_string(const char *s, int len /*= 0*/)
   length_ = str_value_.length();
 }
 
+void Value::set_null(){
+  attr_type_ = NULLS;
+  length_ = 0;
+}
+
 void Value::set_value(const Value &value)
 {
   switch (value.attr_type_) {
+    case NULLS:{
+      set_null();
+    } break;
     case INTS: {
       set_int(value.get_int());
     } break;
@@ -158,6 +169,9 @@ std::string Value::to_string() const
 {
   std::stringstream os;
   switch (attr_type_) {
+    case NULLS: {
+      os << "NULL";
+    }break;
     case INTS: {
       os << num_value_.int_value_;
     } break;
@@ -182,6 +196,11 @@ std::string Value::to_string() const
 
 int Value::compare(const Value &other) const
 {
+  // NULL 和任何值比较都是 false,is null 比较符则另外处理
+  if(attr_type_ == AttrType::NULLS || other.attr_type_ == AttrType::NULLS){
+    return -1;
+  }
+
   if (this->attr_type_ == other.attr_type_) {
     switch (this->attr_type_) {
       case DATES:  // 日期和整形本质都是比较数字
@@ -232,12 +251,6 @@ int Value::compare(const Value &other) const
     return common::compare_float((void *)&this->num_value_.float_value_, (void *)&other_data);
   }
 
-  //  else if (this->attr_type_ == CHARS || other.attr_type_ == CHARS) {
-  //    return common::compare_string((void *)this->get_string().c_str(),
-  //        this->get_string().length(),
-  //        (void *)other.get_string().c_str(),
-  //        other.get_string().length());
-  //  }
   LOG_WARN("not supported");
   return -1;  // TODO return rc?
 }

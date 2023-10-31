@@ -91,7 +91,6 @@ Tuple *ProjectPhysicalOperator::current_tuple()
         case AggFunc::A_COUNT: break; // 直接用计数器
         case AggFunc::A_AVG: // AVG 和 SUM 都是求和
         case AggFunc::A_SUM: {
-//          values[i].set_float(values[i].get_float() + tmp.get_float());
           if(tmp.attr_type() == AttrType::FLOATS){
             values[i].set_float(values[i].get_float() + tmp.get_float()) ;
           } else{

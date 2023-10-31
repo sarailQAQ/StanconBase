@@ -67,7 +67,7 @@ bool RecordPageIterator::has_next() { return -1 != next_slot_num_; }
 RC RecordPageIterator::next(Record &record)
 {
   record.set_rid(page_num_, next_slot_num_);
-  record.set_data(record_page_handler_->get_record_data(record.rid().slot_num));
+  record.set_data(record_page_handler_->get_record_data(record.rid().slot_num), record.bitmap_len());
 
   if (next_slot_num_ >= 0) {
     next_slot_num_ = bitmap_.next_setted_bit(next_slot_num_ + 1);
@@ -149,8 +149,9 @@ RC RecordPageHandler::init_empty_page(DiskBufferPool &buffer_pool, PageNum page_
   page_header_->record_capacity     = page_record_capacity(BP_PAGE_DATA_SIZE, page_header_->record_size);
   page_header_->first_record_offset = align8(PAGE_HEADER_SIZE + page_bitmap_size(page_header_->record_capacity));
   this->fix_record_capacity();
-  ASSERT(page_header_->first_record_offset +
-         page_header_->record_capacity * page_header_->record_size <= BP_PAGE_DATA_SIZE, "Record overflow the page size");
+  ASSERT(page_header_->first_record_offset + page_header_->record_capacity * page_header_->record_size <=
+             BP_PAGE_DATA_SIZE,
+      "Record overflow the page size");
 
   bitmap_ = frame_->data() + PAGE_HEADER_SIZE;
   memset(bitmap_, 0, page_bitmap_size(page_header_->record_capacity));
@@ -208,7 +209,8 @@ RC RecordPageHandler::insert_record(const char *data, RID *rid)
   return RC::SUCCESS;
 }
 
-RC RecordPageHandler::update_record(const Record &record, int offset, int index, Value &value) {
+RC RecordPageHandler::update_record(const Record &record, int offset, int index, Value &value)
+{
   ASSERT(readonly_ == false, "cannot update record into page while the page is readonly");
 
   const RID &rid = record.rid();
@@ -224,22 +226,23 @@ RC RecordPageHandler::update_record(const Record &record, int offset, int index,
     return RC::RECORD_NOT_EXIST;
   }
 
-//  Record *origin_record = nullptr;
-//  int bitmap_len = record.bitmap_len();
-//  bitmap = Bitmap(origin_data, bitmap_len);
+  Record *origin_record = nullptr;
+  char   *origin_data   = get_record_data(rid.slot_num);
+  int     bitmap_len    = record.bitmap_len();
+  bitmap                = Bitmap(origin_data, bitmap_len);
 
   // 如果是从非NULL -> NULL, 那就需要修改为1。
   // 如果从NULL -> 非NULL，那就需要修改为0。
-//  if (value.attr_type() == NULLS) {
-//    bitmap.set_bit(index);
-//  }else {
-//    bitmap.clear_bit(index);
-//  }
+  if (value.attr_type() == NULLS) {
+    bitmap.set_bit(index);
+  } else {
+    bitmap.clear_bit(index);
+  }
 
   // 修改数据
-  char *origin_data = get_record_data(rid.slot_num);
-  char *change_loc = (char *)((uint64_t)(origin_data) + offset);
-  const char *data = value.data();
+  //  char *origin_data = get_record_data(rid.slot_num);
+  char       *change_loc = (char *)((uint64_t)(origin_data) + offset);
+  const char *data       = value.data();
   memcpy(change_loc, data, value.length());
   frame_->mark_dirty();
 
@@ -277,7 +280,6 @@ RC RecordPageHandler::delete_record(const RID *rid)
     LOG_ERROR("Invalid slot_num %d, exceed page's record capacity, page_num %d.", rid->slot_num, frame_->page_num());
     return RC::INVALID_ARGUMENT;
   }
-
   Bitmap bitmap(bitmap_, page_header_->record_capacity);
   if (bitmap.get_bit(rid->slot_num)) {
     bitmap.clear_bit(rid->slot_num);
@@ -309,7 +311,7 @@ RC RecordPageHandler::get_record(const RID *rid, Record *rec)
   }
 
   rec->set_rid(*rid);
-  rec->set_data(get_record_data(rid->slot_num), page_header_->record_real_size);
+  rec->set_data(get_record_data(rid->slot_num), rec->bitmap_len(), page_header_->record_real_size);
   return RC::SUCCESS;
 }
 
@@ -453,7 +455,8 @@ RC RecordFileHandler::insert_record(const char *data, int record_size, RID *rid)
   return record_page_handler.insert_record(data, rid);
 }
 
-RC RecordFileHandler::update_record(const Record &record, int offset, int index, Value &value) {
+RC RecordFileHandler::update_record(const Record &record, int offset, int index, Value &value)
+{
   RC rc = RC::SUCCESS;
 
   RecordPageHandler page_handler;
@@ -545,7 +548,6 @@ RC RecordFileHandler::visit_record(const RID &rid, bool readonly, std::function<
   visitor(record);
   return rc;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 

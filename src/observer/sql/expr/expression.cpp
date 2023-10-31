@@ -39,7 +39,8 @@ CastExpr::~CastExpr()
 RC CastExpr::cast(const Value &value, Value &cast_value) const
 {
   RC rc = RC::SUCCESS;
-  if (this->value_type() == value.attr_type()) {
+  // 如果无需转换，或者原本类型是null，就不转换直接返回
+  if (this->value_type() == value.attr_type() || value.attr_type() == AttrType::NULLS) {
     cast_value = value;
     return rc;
   }
@@ -121,6 +122,11 @@ ComparisonExpr::ComparisonExpr(CompOp comp, unique_ptr<Expression> left, unique_
     return;
   }
 
+
+  // 匹配不上转换规则，也不转
+  left_ = std::move(left);
+  right_ = std::move(right);
+
 }
 
 ComparisonExpr::~ComparisonExpr()
@@ -128,6 +134,12 @@ ComparisonExpr::~ComparisonExpr()
 
 RC ComparisonExpr::compare_value(const Value &left, const Value &right, bool &result) const
 {
+  // 如果存在null参与比较，同时比较符不是is null  也不是 is not null 则直接判断为false
+  if((comp_ != IS_NULL && comp_ != NOT_NULL) && (left.attr_type() == NULLS || right.attr_type() == NULLS)){
+    result = false;
+    return  RC::SUCCESS;
+  }
+
   RC rc = RC::SUCCESS;
   int cmp_result = left.compare(right);
   result = false;
@@ -157,6 +169,16 @@ RC ComparisonExpr::compare_value(const Value &left, const Value &right, bool &re
     } break;
     case NOT_LIKE: {
       result = !left.like(right);
+    } break;
+    case IS_NULL: {
+      AttrType left_type = left.attr_type();
+      AttrType right_type = right.attr_type();
+      result = left_type == right_type && left_type == NULLS;
+    } break;
+    case NOT_NULL: {
+      AttrType left_type = left.attr_type();
+      AttrType right_type = right.attr_type();
+      result = (left_type == NULLS || right_type == NULLS) && (left_type != NULLS || right_type != NULLS);
     } break;
     default: {
       LOG_WARN("unsupported comparison. %d", comp_);
