@@ -325,7 +325,7 @@ RC Table::make_record(int value_num, const Value *values, Record &record)
     // null 更新位图
     if (value.attr_type() == NULLS) {
       bitmap.set_bit(i);
-    } else if (field->type() == CHARS) {
+    } else if (field->type() == CHARS || field->type() == TEXTS) {
       const size_t data_len = value.length();
       if (copy_len > data_len) {
         copy_len = data_len + 1;

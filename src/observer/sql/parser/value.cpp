@@ -20,11 +20,11 @@ See the Mulan PSL v2 for more details. */
 #include "common/lang/string.h"
 #include "common/date.h"
 
-const char *ATTR_TYPE_NAME[] = {"undefined","nulls", "chars", "ints", "dates", "floats", "booleans"};
+const char *ATTR_TYPE_NAME[] = {"undefined", "nulls","chars", "ints", "dates", "floats", "booleans","texts"};
 
 const char *attr_type_to_string(AttrType type)
 {
-  if (type >= UNDEFINED && type <= FLOATS) {
+  if (type >= UNDEFINED && type <= TEXTS) {
     return ATTR_TYPE_NAME[type];
   }
   return "unknown";
@@ -53,6 +53,7 @@ void Value::set_data(char *data, int length)
     case NULLS: {
       set_null();
     }break;
+    case TEXTS:
     case CHARS: {
       set_string(data, length);
     } break;
@@ -147,18 +148,33 @@ void Value::set_value(const Value &value)
     case BOOLEANS: {
       set_boolean(value.get_boolean());
     } break;
+    case TEXTS: {
+      set_text(value.get_string().c_str());
+    } break;
     case UNDEFINED: {
       ASSERT(false, "got an invalid value type");
     } break;
   }
 }
 
+void Value::set_text(const char* s) {
+  attr_type_ = TEXTS;
+  // 截断输入字符串为不超过 4096 个字符
+  if (strlen(s) > 4096) {
+    str_value_.assign(s, 4096);
+  } else {
+    str_value_.assign(s);
+  }
+  length_ = str_value_.length();
+}
+
 const char *Value::data() const
 {
   switch (attr_type_) {
-    case CHARS: {
+    case CHARS:
+    case TEXTS:{
       return str_value_.c_str();
-    }
+    }break;
     default: {
       return (const char *)&num_value_;
     } break;
@@ -184,7 +200,8 @@ std::string Value::to_string() const
     case BOOLEANS: {
       os << num_value_.bool_value_;
     } break;
-    case CHARS: {
+    case CHARS:
+    case TEXTS:{
       os << str_value_;
     } break;
     default: {
@@ -332,6 +349,7 @@ static double str_to_double(const std::string &str)
 int Value::get_int() const
 {
   switch (attr_type_) {
+    case TEXTS:
     case CHARS: {
       try {
         return (int)str_to_double(str_value_);
@@ -365,6 +383,7 @@ int Value::get_int() const
 float Value::get_float() const
 {
   switch (attr_type_) {
+    case TEXTS:
     case CHARS: {
       try {
         return (double)str_to_double(str_value_);
@@ -399,6 +418,7 @@ std::string Value::get_string() const { return this->to_string(); }
 bool Value::get_boolean() const
 {
   switch (attr_type_) {
+    case TEXTS:
     case CHARS: {
       try {
         float val = std::stof(str_value_);

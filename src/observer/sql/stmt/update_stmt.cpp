@@ -64,6 +64,12 @@ RC UpdateStmt::create(Db *db, const UpdateSqlNode &update, Stmt *&stmt)
     update_value.set_type(AttrType::DATES);
   }
 
+  // TEXT类型特殊判断
+  if(field_meta->type() ==  AttrType::TEXTS && update.value.attr_type() == AttrType::CHARS){
+    update_value.set_text(update_value.data());
+    update_value.set_type(AttrType::TEXTS);
+  }
+
   if (field_meta->type() != update_value.attr_type()) {
     LOG_WARN("field type mismatch. table=%s, field=%s, field type=%d, value_type=%d",
           table_name, field_meta->name(), field_meta->type(), update.value.attr_type());
