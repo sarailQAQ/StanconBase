@@ -72,8 +72,9 @@ Tuple *ProjectPhysicalOperator::current_tuple()
   for (size_t i = 0; i < tuple_.cell_num(); i++) {
     cur_tuple->find_cell(*speces[i], tmp);
     values.emplace_back(tmp);
+    values_count.emplace_back(0);
     if (tmp.attr_type() != AttrType::NULLS) {
-      values_count.emplace_back(1);
+      values_count[i] = 1;
     }
   }
   // 读取出所有行
@@ -113,9 +114,12 @@ Tuple *ProjectPhysicalOperator::current_tuple()
   // 特殊处理 count 和 vag
   for (size_t i = 0; i < tuple_.cell_num(); i++) {
     if (speces[i]->agg_func() == AggFunc::A_COUNT) {
-      values[i] = Value(values_count[i]);
+        values[i] = Value(values_count[i]);
     }
     if (speces[i]->agg_func() == AggFunc::A_AVG) {
+      if(values[i].attr_type() == AttrType::NULLS){
+        continue;
+      }
       values[i].set_float(values[i].get_float() / values_count[i]);
     }
   }
