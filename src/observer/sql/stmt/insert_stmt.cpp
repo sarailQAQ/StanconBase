@@ -68,6 +68,15 @@ RC InsertStmt::create(Db *db, InsertSqlNode &inserts, Stmt *&stmt)
       inserts.values[i] = new_date;
       continue;
     }
+    //TEXT类型特判
+    if(field_type == AttrType::TEXTS && value_type == AttrType::CHARS)
+    {
+      auto new_text = Value();
+      new_text.set_type(AttrType::TEXTS);
+      new_text.set_text(inserts.values.data()[i].data());
+      inserts.values[i] = new_text;
+      continue;
+    }
     if (field_type != value_type) {  // TODO try to convert the value type to field type
       LOG_WARN("field type mismatch. table=%s, field=%s, field type=%d, value_type=%d",
           table_name, field_meta->name(), field_type, value_type);
