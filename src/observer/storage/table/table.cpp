@@ -186,7 +186,7 @@ RC Table::drop(const char *base_path)
   std::string data_path = table_data_file(base_path, name());
 
   //  删除索引 t.index
-  for (Index * index : indexes_) {
+  for (Index *index : indexes_) {
     index->drop();
   }
   indexes_.clear();
@@ -198,7 +198,7 @@ RC Table::drop(const char *base_path)
 
   //  删除 BufferPoolManager 创建的文件  t.data
   BufferPoolManager &bpm = BufferPoolManager::instance();
-  rc = bpm.remove_file(data_path.c_str());
+  rc                     = bpm.remove_file(data_path.c_str());
 
   // 删除元数据  t.table
   ::remove(meta_path.c_str());
@@ -241,8 +241,8 @@ RC Table::get_record(const RID &rid, Record &record)
   const int record_size = table_meta_.record_size();
   char     *record_data = (char *)malloc(record_size);
   ASSERT(nullptr != record_data, "failed to malloc memory. record data size=%d", record_size);
-
-  auto copier = [&record, record_data, record_size](Record &record_src) {
+  int  bitmap_size = common::bitmap_size(table_meta_.field_metas()->size());
+  auto copier      = [&record, record_data, record_size](Record &record_src) {
     memcpy(record_data, record_src.data(), record_size);
     record.set_rid(record_src.rid());
   };
@@ -253,7 +253,7 @@ RC Table::get_record(const RID &rid, Record &record)
     return rc;
   }
 
-  record.set_data_owner(record_data, record_size);
+  record.set_data_owner(record_data, record_size, bitmap_size);
   return rc;
 }
 
@@ -298,6 +298,10 @@ RC Table::make_record(int value_num, const Value *values, Record &record)
   for (int i = 0; i < value_num; i++) {
     const FieldMeta *field = table_meta_.field(i + normal_field_start_index);
     const Value     &value = values[i];
+    // null 支持
+    if (value.attr_type() == NULLS) {
+      continue;
+    }
     if (field->type() != value.attr_type()) {
       LOG_ERROR("Invalid value type. table name =%s, field name=%s, type=%d, but given=%d",
                 table_meta_.name(), field->name(), field->type(), value.attr_type());
@@ -306,23 +310,34 @@ RC Table::make_record(int value_num, const Value *values, Record &record)
   }
 
   // 复制所有字段的值
-  int   record_size = table_meta_.record_size();
-  char *record_data = (char *)malloc(record_size);
+  int bitmap_size = common::bitmap_size(table_meta_.field_metas()->size());
+  int record_size = table_meta_.record_size();
+  //  char *record_data = (char *)malloc(record_size);
+
+  char *data = (char *)malloc(record_size);
+  memcpy(data, "\0", bitmap_size);
+  common::Bitmap bitmap(data, bitmap_size);
 
   for (int i = 0; i < value_num; i++) {
     const FieldMeta *field    = table_meta_.field(i + normal_field_start_index);
     const Value     &value    = values[i];
     size_t           copy_len = field->len();
-    if (field->type() == CHARS || field->type() == TEXTS) {
+    // null 更新位图
+    if (value.attr_type() == NULLS) {
+      bitmap.set_bit(i);
+    } else if (field->type() == CHARS || field->type() == TEXTS) {
       const size_t data_len = value.length();
       if (copy_len > data_len) {
         copy_len = data_len + 1;
       }
     }
-    memcpy(record_data + field->offset(), value.data(), copy_len);
+    // 对记录数据进行拷贝
+    memcpy(data + field->offset(), value.data(), copy_len);
+    //    memcpy(record_data + field->offset(), value.data(), copy_len);
   }
 
-  record.set_data_owner(record_data, record_size);
+  record.set_data_owner(data, record_size, bitmap_size);
+  //  record.set_data_owner(record_data, record_size);
   return RC::SUCCESS;
 }
 
@@ -469,8 +484,9 @@ RC Table::delete_record(const Record &record)
   return rc;
 }
 
-RC Table::update_record(Record &record, int offset, int index, Value &value) {
-  RC rc = RC::SUCCESS;
+RC Table::update_record(Record &record, int offset, int index, Value &value)
+{
+  RC     rc = RC::SUCCESS;
   Record old_record(record);
   rc = record_handler_->update_record(record, offset, index, value);
   if (rc != RC::SUCCESS) {

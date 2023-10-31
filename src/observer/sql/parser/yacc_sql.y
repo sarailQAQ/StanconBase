@@ -102,6 +102,7 @@ ArithmeticExpr *create_arithmetic_expression(ArithmeticExpr::Type type,
         LE
         GE
         NE
+        IS
         NULL_T
         // like已经在词法解析之中解析出
         LIKE_C
@@ -433,6 +434,11 @@ value:
       char *tmp = common::substr($1,1,strlen($1)-2);
       $$ = new Value(tmp);
       free(tmp);
+    }
+    |NULL_T {
+      $$ = new Value();
+      $$->set_null();
+      //@$ = @1;
     }
     ;
     
@@ -843,6 +849,8 @@ comp_op:
     | NE { $$ = NOT_EQUAL; }
     | LIKE_C{$$ = LIKE;}
     | NOT LIKE_C{$$ = NOT_LIKE;}
+    | IS {$$ = IS_NULL;}
+    | IS NOT {$$ = NOT_NULL;}
     ;
 
 load_data_stmt:

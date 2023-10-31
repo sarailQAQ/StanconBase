@@ -73,6 +73,7 @@ public:
   void set_string(const char *s, int len = 0);
   void set_value(const Value &value);
   void set_text(const char* s);
+  void set_null();
 
   std::string to_string() const;
 

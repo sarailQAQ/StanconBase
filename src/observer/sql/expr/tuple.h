@@ -24,6 +24,7 @@ See the Mulan PSL v2 for more details. */
 #include "sql/parser/value.h"
 #include "sql/expr/expression.h"
 #include "storage/record/record.h"
+#include "common/lang/bitmap.h"
 
 class Table;
 
@@ -199,10 +200,21 @@ public:
       return RC::INVALID_ARGUMENT;
     }
 
-    FieldExpr *field_expr = speces_[index];
-    const FieldMeta *field_meta = field_expr->field().meta();
-    cell.set_type(field_meta->type());
-    cell.set_data(this->record_->data() + field_meta->offset(), field_meta->len());
+    int bitmap_len = record_->bitmap_len();
+    char *data = record_->data();
+    common::Bitmap bitmap(data, bitmap_len);
+
+    // 根位图据判断指定cell的记录是否为null
+    if (bitmap.get_bit(index)) {
+      cell.set_type(NULLS);
+      cell.set_data("NULL", 5);
+    }else {
+      FieldExpr *field_expr = speces_[index];
+      const FieldMeta *field_meta = field_expr->field().meta();
+      cell.set_type(field_meta->type());
+      cell.set_data(data + field_meta->offset(), field_meta->len());
+    }
+
     return RC::SUCCESS;
   }
 

@@ -54,6 +54,16 @@ RC InsertStmt::create(Db *db, InsertSqlNode &inserts, Stmt *&stmt)
     const FieldMeta *field_meta = table_meta.field(i + sys_field_num);
     const AttrType field_type = field_meta->type();
     const AttrType value_type = inserts.values[i].attr_type();
+
+    // 校验null
+    if(value_type == AttrType::NULLS){
+      if(field_meta->is_nullable()){
+        continue;
+      }
+      LOG_ERROR("Unacceptable operation: put NULL into a NOT NULL field");
+      return RC::SCHEMA_FIELD_NOT_NULL;
+    }
+
     // 日期类型特判
     if(field_type == AttrType::DATES && value_type == AttrType::CHARS){
       int date_num = -1;
