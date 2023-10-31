@@ -48,6 +48,9 @@ RC OrderByPhysicalOperator::open(Trx *trx)
     for(int i = 0; i < order_by_types.size();i++){
       RC rc = RC::SUCCESS;
       auto &sort_expr = expressions[i];
+      if(sort_expr.get() == nullptr) {
+        return false;
+      }
       rc = sort_expr->get_value(*tuple1, left);
       if(rc != RC::SUCCESS){
         return false;
