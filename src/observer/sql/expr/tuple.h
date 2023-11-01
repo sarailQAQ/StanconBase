@@ -185,7 +185,7 @@ public:
   RC set_cell(const FieldMeta *field, const Value *value){
     for (const auto &field_expr : speces_){
       if(strcmp(field_expr->field_name(), field->name()) == 0){
-        strcpy(record_->data()+field->offset(),value->data());
+        memmove(record_->data()+field->offset(),value->data(), field->len());
         return RC::SUCCESS;
       }
     }

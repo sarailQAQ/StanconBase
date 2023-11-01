@@ -95,33 +95,67 @@ private:
  * @details BplusTree的键值除了字段属性，还有RID，是为了避免属性值重复而增加的。
  * @ingroup BPlusTree
  */
-class KeyComparator 
-{
+//class KeyComparator
+//{
+//public:
+//  virtual void init(std::vector<AttrType> attr_types, std::vector<int32_t> attr_lengths) {
+//    attr_comparator_.init(attr_types[0], attr_lengths[0]);
+//  }
+//
+//  const AttrComparator &attr_comparator() const
+//  {
+//    return attr_comparator_;
+//  }
+//
+//  int operator()(const char *v1, const char *v2) const
+//  {
+//    return cmp(v1, v2);
+//  }
+//
+//  virtual int cmp(const char *v1, const char *v2) {
+//    int result = attr_comparator_(v1, v2);
+//    if (result != 0) {
+//      return result;
+//    }
+//
+//    const RID *rid1 = (const RID *)(v1 + attr_comparator_.attr_length());
+//    const RID *rid2 = (const RID *)(v2 + attr_comparator_.attr_length());
+//    return RID::compare(rid1, rid2);
+//  }
+//
+//protected:
+//  AttrComparator attr_comparator_;
+//};
+
+class KeyComparator {
 public:
-  void init(AttrType type, int length)
-  {
-    attr_comparator_.init(type, length);
+  void init(std::vector<AttrType> attr_types, std::vector<int32_t> attr_lengths)  {
+    attr_lengths_ = attr_lengths;
+    attr_types_ = attr_types;
   }
 
-  const AttrComparator &attr_comparator() const
-  {
-    return attr_comparator_;
-  }
+  int operator()(const char* v1, const char* v2 , bool compare_rid = true) const {
+    int offset = 0;
+    auto compare_count = attr_types_.size();
 
-  int operator()(const char *v1, const char *v2) const
-  {
-    int result = attr_comparator_(v1, v2);
-    if (result != 0) {
-      return result;
+    AttrComparator attr_comparator;
+    for (int i = 0 ; i < compare_count; i++) {
+      attr_comparator.init(attr_types_[i], attr_lengths_[i]);
+      auto result = attr_comparator(v1 + offset, v2 + offset);
+      if (result != 0) return result;
+
+      offset += attr_lengths_[i];
     }
+    if (!compare_rid) return 0;
 
-    const RID *rid1 = (const RID *)(v1 + attr_comparator_.attr_length());
-    const RID *rid2 = (const RID *)(v2 + attr_comparator_.attr_length());
+    const RID* rid1 = (const RID*)(v1 + offset);
+    const RID* rid2 = (const RID*)(v2 + offset);
     return RID::compare(rid1, rid2);
   }
 
 private:
-  AttrComparator attr_comparator_;
+  std::vector<int32_t> attr_lengths_;  ///< 每个属性的长度
+  std::vector<AttrType> attr_types_;   ///< 每个属性的类型
 };
 
 /**
@@ -180,28 +214,30 @@ private:
 class KeyPrinter 
 {
 public:
-  void init(AttrType type, int length)
+  void init(std::vector<AttrType> types, std::vector<int> lengths)
   {
-    attr_printer_.init(type, length);
-  }
-
-  const AttrPrinter &attr_printer() const
-  {
-    return attr_printer_;
+    types_ = types;
+    lengths_ = lengths;
   }
 
   std::string operator()(const char *v) const
   {
     std::stringstream ss;
-    ss << "{key:" << attr_printer_(v) << ",";
+    AttrPrinter attr_printer_;
+    for (int i = 0; i < types_.size(); i++) {
+      attr_printer_.init(types_[i], lengths_[i]);
+      ss << "{key:" << attr_printer_(v) << ",";
 
-    const RID *rid = (const RID *)(v + attr_printer_.attr_length());
-    ss << "rid:{" << rid->to_string() << "}}";
+      const RID *rid = (const RID *)(v + attr_printer_.attr_length());
+      ss << "rid:{" << rid->to_string() << "}}";
+    }
+
     return ss.str();
   }
 
 private:
-  AttrPrinter attr_printer_;
+  std::vector<AttrType> types_;
+  std::vector<int> lengths_;
 };
 
 /**
@@ -212,29 +248,35 @@ private:
  */
 struct IndexFileHeader 
 {
+  static size_t class_size() {
+      return sizeof(PageNum ) + sizeof (int32_t) * 3;
+  }
   IndexFileHeader()
   {
-    memset(this, 0, sizeof(IndexFileHeader));
+    memset(this, 0, class_size());
     root_page = BP_INVALID_PAGE_NUM;
+    attr_types_.clear();
+    attr_lengths_.clear();
   }
+
   PageNum root_page;          ///< 根节点在磁盘中的页号
   int32_t internal_max_size;  ///< 内部节点最大的键值对数
   int32_t leaf_max_size;      ///< 叶子节点最大的键值对数
-  int32_t attr_length;        ///< 键值的长度
   int32_t key_length;         ///< attr length + sizeof(RID)
-  AttrType attr_type;         ///< 键值的类型
+
+  std::vector<int32_t> attr_lengths_;  ///< 每个属性的长度
+  std::vector<AttrType> attr_types_;   ///< 每个属性的类型
 
   const std::string to_string()
   {
     std::stringstream ss;
 
-    ss << "attr_length:" << attr_length << ","
-       << "key_length:" << key_length << ","
-       << "attr_type:" << attr_type << ","
+    ss << "key_length:" << key_length << ","
        << "root_page:" << root_page << ","
        << "internal_max_size:" << internal_max_size << ","
-       << "leaf_max_size:" << leaf_max_size << ";";
-
+       << "leaf_max_size:" << leaf_max_size << ";"
+       << "attr_type:";
+    for (auto& type : attr_types_)  ss << type << ",";
     return ss.str();
   }
 };
@@ -466,8 +508,8 @@ public:
    * attrType描述被索引属性的类型，attrLength描述被索引属性的长度
    */
   RC create(const char *file_name, 
-            AttrType attr_type, 
-            int attr_length, 
+            std::vector<AttrType> attr_types,
+            std::vector<int32_t> attr_lens,
             int internal_max_size = -1, 
             int leaf_max_size = -1);
 
@@ -476,7 +518,7 @@ public:
    * 如果方法调用成功，则indexHandle为指向被打开的索引句柄的指针。
    * 索引句柄用于在索引中插入或删除索引项，也可用于索引的扫描
    */
-  RC open(const char *file_name);
+  RC open(const char *file_name, std::vector<const FieldMeta*>& field_metas);
 
   /**
    * 关闭句柄indexHandle对应的索引文件
@@ -484,19 +526,19 @@ public:
   RC close();
 
   /**
-   * 此函数向IndexHandle对应的索引中插入一个索引项。
-   * 参数user_key指向要插入的属性值，参数rid标识该索引项对应的元组，
-   * 即向索引中插入一个值为（user_key，rid）的键值对
-   * @note 这里假设user_key的内存大小与attr_length 一致
+     * 此函数向IndexHandle对应的索引中插入一个索引项。
+     * 参数user_key指向要插入的属性值，参数rid标识该索引项对应的元组，
+     * 即向索引中插入一个值为（user_key，rid）的键值对
+     * @note 这里假设user_key的内存大小与attr_length 一致
    */
-  RC insert_entry(const char *user_key, const RID *rid);
+  RC insert_entry(const char* user_keys[], int total_offset, const RID* rid);
 
   /**
-   * 从IndexHandle句柄对应的索引中删除一个值为（*pData，rid）的索引项
-   * @return RECORD_INVALID_KEY 指定值不存在
-   * @note 这里假设user_key的内存大小与attr_length 一致
+     * 从IndexHandle句柄对应的索引中删除一个值为（*pData，rid）的索引项
+     * @return RECORD_INVALID_KEY 指定值不存在
+     * @note 这里假设user_key的内存大小与attr_length 一致
    */
-  RC delete_entry(const char *user_key, const RID *rid);
+  RC delete_entry(const char* user_keys[], int total_offset, const RID* rid);
 
   bool is_empty() const;
 
@@ -568,7 +610,7 @@ protected:
   RC adjust_root(LatchMemo &latch_memo, Frame *root_frame);
 
 private:
-  common::MemPoolItem::unique_ptr make_key(const char *user_key, const RID &rid);
+  common::MemPoolItem::unique_ptr make_key(const char* user_keys[], int total_offset, const RID& rid);
   void free_key(char *key);
 
 protected:

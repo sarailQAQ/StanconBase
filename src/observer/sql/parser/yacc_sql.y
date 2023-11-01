@@ -182,6 +182,7 @@ ArithmeticExpr *create_arithmetic_expression(ArithmeticExpr::Type type,
 %type <sql_node>            desc_table_stmt
 %type <sql_node>            create_index_stmt
 %type <sql_node>            drop_index_stmt
+%type <sql_node>            show_index_stmt
 %type <sql_node>            sync_stmt
 %type <sql_node>            begin_stmt
 %type <sql_node>            commit_stmt
@@ -219,6 +220,7 @@ command_wrapper:
   | desc_table_stmt
   | create_index_stmt
   | drop_index_stmt
+  | show_index_stmt
   | sync_stmt
   | begin_stmt
   | commit_stmt
@@ -230,7 +232,7 @@ command_wrapper:
   | exit_stmt
     ;
 
-exit_stmt:      
+exit_stmt:
     EXIT {
       (void)yynerrs;  // 这么写为了消除yynerrs未使用的告警。如果你有更好的方法欢迎提PR
       $$ = new ParsedSqlNode(SCF_EXIT);
@@ -285,31 +287,6 @@ desc_table_stmt:
       free($2);
     }
     ;
-
-create_index_stmt:    /*create index 语句的语法解析树*/
-    CREATE INDEX ID ON ID LBRACE ID RBRACE
-    {
-      $$ = new ParsedSqlNode(SCF_CREATE_INDEX);
-      CreateIndexSqlNode &create_index = $$->create_index;
-      create_index.index_name = $3;
-      create_index.relation_name = $5;
-      create_index.attribute_name = $7;
-      free($3);
-      free($5);
-      free($7);
-    }
-    ;
-
-drop_index_stmt:      /*drop index 语句的语法解析树*/
-    DROP INDEX ID ON ID
-    {
-      $$ = new ParsedSqlNode(SCF_DROP_INDEX);
-      $$->drop_index.index_name = $3;
-      $$->drop_index.relation_name = $5;
-      free($3);
-      free($5);
-    }
-    ;
 create_table_stmt:    /*create table 语句的语法解析树*/
     CREATE TABLE ID LBRACE attr_def attr_def_list RBRACE
     {
@@ -328,6 +305,44 @@ create_table_stmt:    /*create table 语句的语法解析树*/
       delete $5;
     }
     ;
+
+create_index_stmt:    /*create index 语句的语法解析树*/
+    CREATE INDEX ID ON ID LBRACE rel_attr attr_list RBRACE
+    {
+      $$ = new ParsedSqlNode(SCF_CREATE_INDEX);
+      CreateIndexSqlNode &create_index = $$->create_index;
+      create_index.index_name = $3;
+      create_index.relation_name = $5;
+      create_index.attribute_names.push_back(*$7);
+      if ($8 != nullptr) {
+        create_index.attribute_names.insert(create_index.attribute_names.end(), $8->begin(), $8->end());
+      }
+      free($3);
+      free($5);
+      free($7);
+    }
+    ;
+
+drop_index_stmt:      /*drop index 语句的语法解析树*/
+    DROP INDEX ID ON ID
+    {
+      $$ = new ParsedSqlNode(SCF_DROP_INDEX);
+      $$->drop_index.index_name = $3;
+      $$->drop_index.relation_name = $5;
+      free($3);
+      free($5);
+    }
+    ;
+
+show_index_stmt:
+    SHOW INDEX FROM ID
+    {
+        $$ = new ParsedSqlNode(SCF_SHOW_INDEX);
+        $$->show_index.relation_name = $4;
+        free($4);
+    }
+    ;
+
 attr_def_list:
     /* empty */
     {
@@ -344,7 +359,7 @@ attr_def_list:
       delete $2;
     }
     ;
-    
+
 attr_def:
     ID type LBRACE number RBRACE nullable
     {
@@ -392,7 +407,7 @@ type:
     | TEXT_T  { $$=TEXTS; }
     ;
 insert_stmt:        /*insert   语句的语法解析树*/
-    INSERT INTO ID VALUES LBRACE value value_list RBRACE 
+    INSERT INTO ID VALUES LBRACE value value_list RBRACE
     {
       $$ = new ParsedSqlNode(SCF_INSERT);
       $$->insertion.relation_name = $3;
@@ -411,7 +426,7 @@ value_list:
     {
       $$ = nullptr;
     }
-    | COMMA value value_list  { 
+    | COMMA value value_list  {
       if ($3 != nullptr) {
         $$ = $3;
       } else {
@@ -441,9 +456,9 @@ value:
       //@$ = @1;
     }
     ;
-    
+
 delete_stmt:    /*  delete 语句的语法解析树*/
-    DELETE FROM ID where 
+    DELETE FROM ID where
     {
       $$ = new ParsedSqlNode(SCF_DELETE);
       $$->deletion.relation_name = $3;
@@ -455,7 +470,7 @@ delete_stmt:    /*  delete 语句的语法解析树*/
     }
     ;
 update_stmt:      /*  update 语句的语法解析树*/
-    UPDATE ID SET ID EQ value where 
+    UPDATE ID SET ID EQ value where
     {
       $$ = new ParsedSqlNode(SCF_UPDATE);
       $$->update.relation_name = $2;
@@ -770,7 +785,7 @@ where:
       $$ = nullptr;
     }
     | WHERE condition_list {
-      $$ = $2;  
+      $$ = $2;
     }
     ;
 condition_list:
@@ -802,7 +817,7 @@ condition:
       delete $1;
       delete $3;
     }
-    | value comp_op value 
+    | value comp_op value
     {
       $$ = new ConditionSqlNode;
       $$->left_is_attr = 0;
