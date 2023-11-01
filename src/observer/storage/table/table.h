@@ -114,7 +114,7 @@ private:
 
 public:
   Index *find_index(const char *index_name) const;
-  Index *find_index_by_field(const char *field_name) const;
+  Index *find_index_by_fields(std::vector<std::string>& field_name) const;
 
 private:
   std::string base_dir_;

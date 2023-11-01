@@ -13,6 +13,7 @@ See the Mulan PSL v2 for more details. */
 //
 
 #include <utility>
+#include <vector>
 
 #include "sql/optimizer/physical_plan_generator.h"
 #include "sql/operator/table_get_logical_operator.h"
@@ -37,6 +38,7 @@ See the Mulan PSL v2 for more details. */
 #include "sql/operator/calc_logical_operator.h"
 #include "sql/operator/calc_physical_operator.h"
 #include "sql/expr/expression.h"
+#include "storage/index/index.h"
 #include "common/log/log.h"
 
 using namespace std;
@@ -98,10 +100,9 @@ RC PhysicalPlanGenerator::create_plan(TableGetLogicalOperator &table_get_oper, u
   // 看看是否有可以用于索引查找的表达式
   Table *table = table_get_oper.table();
 
-  std::vector<Field> candidate_field;
-
   Index *index = nullptr;
   ValueExpr *value_expr = nullptr;
+  std::vector<std::string> candidate_fields;
   for (auto &expr : predicates) {
     if (expr->type() == ExprType::COMPARISON) {
       auto comparison_expr = static_cast<ComparisonExpr *>(expr.get());
@@ -133,17 +134,22 @@ RC PhysicalPlanGenerator::create_plan(TableGetLogicalOperator &table_get_oper, u
       }
 
       const Field &field = field_expr->field();
-      index = table->find_index_by_field(field.field_name());
+      candidate_fields.clear();
+      candidate_fields.emplace_back(field.field_name());
+      index = table->find_index_by_fields(candidate_fields);
       if (nullptr != index) {
         break;
       }
     }
   }
 
+//  index = table->find_index_by_fields(candidate_fields);
+
   if (index != nullptr) {
     ASSERT(value_expr != nullptr, "got an index but value expr is null ?");
-
+    std::cout << "using index: " << std::string(index->index_meta().name());
     const Value &value = value_expr->get_value();
+
     // 创建范围查找的扫描器，从value到value 相当于等于号
     IndexScanPhysicalOperator *index_scan_oper = new IndexScanPhysicalOperator(
           table, index, table_get_oper.readonly(),

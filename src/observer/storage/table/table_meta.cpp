@@ -179,14 +179,23 @@ const IndexMeta *TableMeta::index(const char *name) const
   return nullptr;
 }
 
-const IndexMeta *TableMeta::find_index_by_field(const char *field) const
+const IndexMeta *TableMeta::find_index_by_fields(std::vector<std::string>& field_names) const
 {
+  const IndexMeta* idx = nullptr;
+  size_t matched_size = 0;
   for (const IndexMeta &index : indexes_) {
-    if (0 == strcmp(index.field_str(), field)) {
-      return &index;
+    for (int i = 0; i < index.fields().size(); i++) {
+      if (std::find(field_names.begin(), field_names.end(), index.fields()[i]) == field_names.end()) {
+        break;
+      }
+
+      if (i == index.fields().size() && index.fields().size() > matched_size) {
+        idx = &index;
+        matched_size = i+1;
+      }
     }
   }
-  return nullptr;
+  return idx;
 }
 
 const IndexMeta *TableMeta::index(int i) const
