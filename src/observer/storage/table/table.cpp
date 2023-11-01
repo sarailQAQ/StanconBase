@@ -484,11 +484,11 @@ RC Table::delete_record(const Record &record)
   return rc;
 }
 
-RC Table::update_record(Record &record, int offset, int index, Value &value)
+RC Table::update_record(Record &record, const FieldMeta* fieldMeta, int index, Value &value)
 {
   RC     rc = RC::SUCCESS;
   Record old_record(record);
-  rc = record_handler_->update_record(offset, index, value, record);
+  rc = record_handler_->update_record(fieldMeta->offset(),fieldMeta->len(), index, value, record);
   if (rc != RC::SUCCESS) {
     LOG_ERROR("Update record failed. table name=%s, rc=%s", table_meta_.name(), strrc(rc));
     return rc;

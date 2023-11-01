@@ -209,7 +209,7 @@ RC RecordPageHandler::insert_record(const char *data, RID *rid)
   return RC::SUCCESS;
 }
 
-RC RecordPageHandler::update_record(int offset, int index, Value &value, const Record &record)
+RC RecordPageHandler::update_record(int offset, int len, int index, Value &value, const Record &record)
 {
   ASSERT(readonly_ == false, "cannot update record into page while the page is readonly");
 
@@ -242,8 +242,8 @@ RC RecordPageHandler::update_record(int offset, int index, Value &value, const R
   // 修改数据
   char       *change_loc = (char *)((uint64_t)(origin_data) + offset);
   const char *data       = value.data();
-  strcpy(change_loc,data);
-//  memcpy(change_loc, data, value.length());// +1是保证\0也复制进去了
+  memset(change_loc, 0, len);
+  memcpy(change_loc, data, value.length());
   frame_->mark_dirty();
 
   return RC::SUCCESS;
@@ -455,7 +455,7 @@ RC RecordFileHandler::insert_record(const char *data, int record_size, RID *rid)
   return record_page_handler.insert_record(data, rid);
 }
 
-RC RecordFileHandler::update_record(int offset, int index, Value &value, const Record &record)
+RC RecordFileHandler::update_record(int offset, int len, int index, Value &value, const Record &record)
 {
   RC rc = RC::SUCCESS;
 
@@ -465,7 +465,7 @@ RC RecordFileHandler::update_record(int offset, int index, Value &value, const R
     return rc;
   }
 
-  rc = page_handler.update_record(offset, index, value, record);
+  rc = page_handler.update_record(offset,len , index, value, record);
   // TODO
 
   return rc;
