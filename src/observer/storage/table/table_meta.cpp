@@ -80,7 +80,7 @@ RC TableMeta::init(int32_t table_id, const char *name, int field_num, const Attr
     rc = fields_[i + trx_field_num].init(attr_info.name.c_str(), 
             attr_info.type, field_offset, attr_info.length, true/*visible*/,attr_info.is_nullable);
     if (rc != RC::SUCCESS) {
-      LOG_ERROR("Failed to init field meta. table name=%s, field name: %s", name, attr_info.name.c_str());
+      LOG_ERROR("Failed to init field meta. table name=%s, field_str name: %s", name, attr_info.name.c_str());
       return rc;
     }
 
@@ -179,14 +179,23 @@ const IndexMeta *TableMeta::index(const char *name) const
   return nullptr;
 }
 
-const IndexMeta *TableMeta::find_index_by_field(const char *field) const
+const IndexMeta *TableMeta::find_index_by_fields(std::vector<std::string>& field_names) const
 {
+  const IndexMeta* idx = nullptr;
+  size_t matched_size = 0;
   for (const IndexMeta &index : indexes_) {
-    if (0 == strcmp(index.field(), field)) {
-      return &index;
+    for (int i = 0; i < index.fields().size(); i++) {
+      if (std::find(field_names.begin(), field_names.end(), index.fields()[i]) == field_names.end()) {
+        break;
+      }
+
+      if (i == index.fields().size() && index.fields().size() > matched_size) {
+        idx = &index;
+        matched_size = i+1;
+      }
     }
   }
-  return nullptr;
+  return idx;
 }
 
 const IndexMeta *TableMeta::index(int i) const

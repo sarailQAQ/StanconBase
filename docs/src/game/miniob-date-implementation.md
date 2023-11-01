@@ -118,7 +118,7 @@ const char *ATTR_TYPE_NAME[] = {
 这个接口主要是为了支持从文件导入数据的，同样，实现可以与int类型保持一致。
 
 ```c++
-switch (field->type()) {
+switch (field_str->type()) {
         case INTS: case DATES:{
         deserialize_stream.clear(); // 清理stream的状态，防止多次解析出现异常
         deserialize_stream.str(file_value);
@@ -127,7 +127,7 @@ switch (field->type()) {
         deserialize_stream >> int_value;
         if (!deserialize_stream || !deserialize_stream.eof()) {
           errmsg << "need an integer but got '" << file_values[i]
-                 << "' (field index:" << i << ")";
+                 << "' (field_str index:" << i << ")";
 
           rc = RC::SCHEMA_FIELD_TYPE_MISMATCH;
         } else {
