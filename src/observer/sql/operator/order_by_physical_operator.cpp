@@ -37,30 +37,20 @@ RC OrderByPhysicalOperator::open(Trx *trx)
     auto temp = children_[0]->current_tuple();
     tuple_cache_.emplace_back(std::move(temp->clone()));
   }
-  rc = children_[0]->close();
-  auto &expressions = expressions_;
+  rc                   = children_[0]->close();
+  auto &expressions    = expressions_;
   auto &order_by_types = order_by_types_;
   // 开始基于各个比较字段排序
   // 自定义比较逻辑
-  auto compareTuple = [&expressions,order_by_types](const Tuple *tuple1, const Tuple *tuple2) {
+  auto compareTuple = [&expressions, order_by_types](const Tuple *tuple1, const Tuple *tuple2) {
     Value left;
     Value right;
-    for(int i = 0; i < order_by_types.size();i++){
-      RC rc = RC::SUCCESS;
+    for (int i = 0; i < order_by_types.size(); i++) {
       auto &sort_expr = expressions[i];
-      if(sort_expr.get() == nullptr) {
-        return false;
-      }
-      rc = sort_expr->get_value(*tuple1, left);
-      if(rc != RC::SUCCESS){
-        return false;
-      }
-      rc = sort_expr->get_value(*tuple2, right);
-      if(rc != RC::SUCCESS) {
-        return false;
-      }
+      sort_expr->get_value(*tuple1, left);
+      sort_expr->get_value(*tuple2, right);
       auto res = left.compare(right);
-      if(res == 0){
+      if (res == 0) {
         continue;
       }
       return order_by_types[i] == OrderByType::SORT_ASC ? res < 0 : res > 0;
