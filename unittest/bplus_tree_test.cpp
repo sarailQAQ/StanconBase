@@ -484,7 +484,7 @@ TEST(test_bplus_tree, test_chars) {
   attr_lengths.push_back(8);
   std::vector<AttrType> attr_types;
   attr_types.push_back(CHARS);
-  handler->create(index_name, attr_types, attr_lengths,  ORDER, ORDER);
+  handler->create(index_name, attr_types, attr_lengths, ORDER, ORDER, false);
 
   char keys[][9] = {
       "abcdefg",
@@ -530,7 +530,7 @@ TEST(test_bplus_tree, test_scanner) {
   attr_lengths.push_back(4);
   std::vector<AttrType> attr_types;
   attr_types.push_back(INTS);
-  handler->create(index_name, attr_types, attr_lengths,  ORDER, ORDER);
+  handler->create(index_name, attr_types, attr_lengths, ORDER, ORDER, false);
 
   int count = 0;
   RC rc = RC::SUCCESS;
@@ -743,7 +743,7 @@ TEST(test_bplus_tree, test_bplus_tree_insert) {
   attr_lengths.push_back(4);
   std::vector<AttrType> attr_types;
   attr_types.push_back(INTS);
-  handler->create(index_name, attr_types, attr_lengths,  ORDER, ORDER);
+  handler->create(index_name, attr_types, attr_lengths, ORDER, ORDER, false);
 
   test_insert();
 

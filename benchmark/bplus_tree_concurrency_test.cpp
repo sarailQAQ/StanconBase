@@ -69,7 +69,7 @@ public:
     attr_types.push_back(AttrType::INTS);
     std::vector<int32_t> attr_lens;
     attr_lens.push_back(sizeof(int32_t));
-    RC rc = handler_.create(filename, attr_types, attr_lens ,  internal_max_size, leaf_max_size);
+    RC rc = handler_.create(filename, attr_types, attr_lens, internal_max_size, leaf_max_size, false);
     if (rc != RC::SUCCESS) {
       throw runtime_error("failed to create btree handler");
     }

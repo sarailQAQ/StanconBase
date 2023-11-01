@@ -741,8 +741,8 @@ RC BplusTreeHandler::sync()
   return disk_buffer_pool_->flush_all_pages();
 }
 
-RC BplusTreeHandler::create(const char *file_name, std::vector<AttrType> attr_types, std::vector<int32_t> attr_lens, int internal_max_size /* = -1*/,
-    int leaf_max_size /* = -1 */)
+RC BplusTreeHandler::create(const char *file_name, std::vector<AttrType> attr_types, std::vector<int32_t> attr_lens,
+    int internal_max_size, int leaf_max_size, bool is_unique)
 {
   BufferPoolManager &bpm = BufferPoolManager::instance();
   RC rc = bpm.create_file(file_name);
@@ -797,6 +797,7 @@ RC BplusTreeHandler::create(const char *file_name, std::vector<AttrType> attr_ty
   file_header->internal_max_size = internal_max_size;
   file_header->leaf_max_size = leaf_max_size;
   file_header->root_page = BP_INVALID_PAGE_NUM;
+  file_header->is_unique = is_unique;
 
   header_frame->mark_dirty();
 
@@ -1438,6 +1439,30 @@ RC BplusTreeHandler::get_entry(const char *user_key, int key_len, std::list<RID>
   }
   return rc;
 }
+
+//RC BplusTreeHandler::get_entry(const char* user_keys[], int key_len, std::list<RID> &rids)
+//{
+//  BplusTreeScanner scanner(*this);
+//  RC rc = scanner.open(user_keys, key_len, true /*left_inclusive*/, user_keys, key_len, true /*right_inclusive*/);
+//  if (rc != RC::SUCCESS) {
+//    LOG_WARN("failed to open scanner. rc=%s", strrc(rc));
+//    return rc;
+//  }
+//
+//  RID rid;
+//  while ((rc = scanner.next_entry(rid)) == RC::SUCCESS) {
+//    rids.push_back(rid);
+//  }
+//
+//  scanner.close();
+//  if (rc != RC::RECORD_EOF) {
+//    LOG_WARN("scanner return error. rc=%s", strrc(rc));
+//  } else {
+//    rc = RC::SUCCESS;
+//  }
+//  return rc;
+//        return RC::SUCCESS;
+//}
 
 RC BplusTreeHandler::adjust_root(LatchMemo &latch_memo, Frame *root_frame)
 {

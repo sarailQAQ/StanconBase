@@ -20,7 +20,8 @@ BplusTreeIndex::~BplusTreeIndex() noexcept
   close();
 }
 
-RC BplusTreeIndex::create(const char *file_name, const IndexMeta &index_meta, std::vector<const FieldMeta*>& field_metas)
+RC BplusTreeIndex::create(
+    const char *file_name, const IndexMeta &index_meta, std::vector<const FieldMeta *> &field_metas, bool is_unique)
 {
   if (inited_) {
     LOG_WARN("Failed to create index due to the index has been created before. file_name:%s, index:%s, field:%s",
@@ -30,14 +31,14 @@ RC BplusTreeIndex::create(const char *file_name, const IndexMeta &index_meta, st
     return RC::RECORD_OPENNED;
   }
 
-  Index::init(index_meta, field_metas);
+  Index::init(index_meta, field_metas, is_unique);
 
  // 设置类型,
   // 如果是多个字段 -> 设置为MULTI
   // 如果只有一个字段 -> 设置为第一个字段的类型
   std::vector<AttrType> attr_types;
-  for (int i = 0; i < field_metas.size(); i++) {
-    attr_types.push_back(field_metas[i]->type());
+  for (auto & field_meta : field_metas) {
+    attr_types.push_back(field_meta->type());
   }
 
   // 计算联合索引的长度
@@ -46,7 +47,7 @@ RC BplusTreeIndex::create(const char *file_name, const IndexMeta &index_meta, st
     attr_lens.push_back(field_metas[i]->len());
   }
 
-  RC rc = index_handler_.create(file_name, attr_types, attr_lens);
+  RC rc = index_handler_.create(file_name, attr_types, attr_lens, is_unique);
   if (RC::SUCCESS != rc) {
     LOG_WARN("Failed to create index_handler, file_name:%s, index:%s, field:%s, rc:%s",
         file_name,
@@ -72,7 +73,7 @@ RC BplusTreeIndex::open(const char *file_name, const IndexMeta &index_meta, std:
     return RC::RECORD_OPENNED;
   }
 
-  Index::init(index_meta, field_metas);
+  Index::init(index_meta, field_metas, false);
 
   RC rc = index_handler_.open(file_name, field_metas);
   if (RC::SUCCESS != rc) {
@@ -121,6 +122,14 @@ RC BplusTreeIndex::insert_entry(const char *record, const RID *rid) {
   for (int i = 0; i < field_metas_.size(); i++) {
     keys[i] = record + field_metas_[i].offset();
     offset += field_metas_[i].len();
+  }
+  if (is_unique_ ) {
+    // 检查是否存在
+    if (field_metas_.size() > 1)
+      LOG_ERROR("unique multi index!");
+    std::list<RID> res;
+    index_handler_.get_entry(keys[0], offset, res);
+    if (!res.empty()) return RC::RECORD_INVALID_KEY;
   }
   rc = index_handler_.insert_entry(keys, offset, rid);
   return rc;

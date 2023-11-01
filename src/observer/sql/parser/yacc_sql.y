@@ -114,6 +114,7 @@ ArithmeticExpr *create_arithmetic_expression(ArithmeticExpr::Type type,
         AVG
         ORDER
         BY
+        UNIQUE
 
 /** union 中定义各种数据类型，真实生成的代码也是union类型，所以不能有非POD类型的数据 **/
 %union {
@@ -317,9 +318,25 @@ create_index_stmt:    /*create index 语句的语法解析树*/
       if ($8 != nullptr) {
         create_index.attribute_names.insert(create_index.attribute_names.end(), $8->begin(), $8->end());
       }
+      create_index.is_unique = false;
       free($3);
       free($5);
       free($7);
+    }
+    | CREATE UNIQUE INDEX ID ON ID LBRACE rel_attr attr_list RBRACE {
+        $$ = new ParsedSqlNode(SCF_CREATE_INDEX);
+        CreateIndexSqlNode &create_index = $$->create_index;
+        create_index.index_name = $4;
+        create_index.relation_name = $6;
+        create_index.attribute_names.push_back(*$8);
+        if ($9 != nullptr) {
+           create_index.attribute_names.insert(create_index.attribute_names.end(), $9->begin(), $9->end());
+        }
+        create_index.is_unique = true;
+        printf("uu ok!\n");
+        free($4);
+        free($6);
+        free($8);
     }
     ;
 
