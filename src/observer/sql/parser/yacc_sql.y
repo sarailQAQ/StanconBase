@@ -361,7 +361,7 @@ attr_def:
       $$->type = (AttrType)$2;
       $$->name = $1;
       if($$->type == TEXTS) {
-      $$->length = 4096;
+      $$->length = 65535;
       }else{
         $$->length = 4;
       }

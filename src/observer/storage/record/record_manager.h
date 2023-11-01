@@ -166,7 +166,7 @@ public:
    */
   RC insert_record(const char *data, RID *rid);
 
-  RC update_record(const Record &record, int offset, int index, Value &value);
+  RC update_record(int offset, int index, Value &value, const Record &record);
 
   /**
    * @brief 数据库恢复时，在指定位置插入数据
@@ -286,7 +286,7 @@ public:
    */
   RC recover_insert_record(const char *data, int record_size, const RID &rid);
 
-  RC update_record(const Record &record, int offset, int index, Value &value);
+  RC update_record(int offset, int index, Value &value, const Record &record);
 
   /**
    * @brief 获取指定文件中标识符为rid的记录内容到rec指向的记录结构中

@@ -209,7 +209,7 @@ RC RecordPageHandler::insert_record(const char *data, RID *rid)
   return RC::SUCCESS;
 }
 
-RC RecordPageHandler::update_record(const Record &record, int offset, int index, Value &value)
+RC RecordPageHandler::update_record(int offset, int index, Value &value, const Record &record)
 {
   ASSERT(readonly_ == false, "cannot update record into page while the page is readonly");
 
@@ -240,7 +240,6 @@ RC RecordPageHandler::update_record(const Record &record, int offset, int index,
   }
 
   // 修改数据
-  //  char *origin_data = get_record_data(rid.slot_num);
   char       *change_loc = (char *)((uint64_t)(origin_data) + offset);
   const char *data       = value.data();
   memcpy(change_loc, data, value.length());
@@ -455,7 +454,7 @@ RC RecordFileHandler::insert_record(const char *data, int record_size, RID *rid)
   return record_page_handler.insert_record(data, rid);
 }
 
-RC RecordFileHandler::update_record(const Record &record, int offset, int index, Value &value)
+RC RecordFileHandler::update_record(int offset, int index, Value &value, const Record &record)
 {
   RC rc = RC::SUCCESS;
 
@@ -465,7 +464,7 @@ RC RecordFileHandler::update_record(const Record &record, int offset, int index,
     return rc;
   }
 
-  rc = page_handler.update_record(record, offset, index, value);
+  rc = page_handler.update_record(offset, index, value, record);
   // TODO
 
   return rc;

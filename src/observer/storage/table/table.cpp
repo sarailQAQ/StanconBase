@@ -488,7 +488,7 @@ RC Table::update_record(Record &record, int offset, int index, Value &value)
 {
   RC     rc = RC::SUCCESS;
   Record old_record(record);
-  rc = record_handler_->update_record(record, offset, index, value);
+  rc = record_handler_->update_record(offset, index, value, record);
   if (rc != RC::SUCCESS) {
     LOG_ERROR("Update record failed. table name=%s, rc=%s", table_meta_.name(), strrc(rc));
     return rc;

@@ -1952,7 +1952,7 @@ yyreduce:
       (yyval.attr_info)->type = (AttrType)(yyvsp[-1].number);
       (yyval.attr_info)->name = (yyvsp[-2].string);
       if((yyval.attr_info)->type == TEXTS) {
-      (yyval.attr_info)->length = 4096;
+      (yyval.attr_info)->length = 65535;
       }else{
         (yyval.attr_info)->length = 4;
       }

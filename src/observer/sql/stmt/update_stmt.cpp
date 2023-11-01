@@ -70,7 +70,13 @@ RC UpdateStmt::create(Db *db, const UpdateSqlNode &update, Stmt *&stmt)
     update_value.set_type(AttrType::TEXTS);
   }
 
-  if (field_meta->type() != update_value.attr_type()) {
+  // null 特判
+  if(!field_meta->is_nullable() && update_value.attr_type() == AttrType::NULLS){
+    LOG_WARN("field can not be set null");
+    return RC::SCHEMA_FIELD_NOT_NULL;
+  }
+
+  if (update_value.attr_type() != NULLS && field_meta->type() != update_value.attr_type()) {
     LOG_WARN("field type mismatch. table=%s, field=%s, field type=%d, value_type=%d",
           table_name, field_meta->name(), field_meta->type(), update.value.attr_type());
     return RC::SCHEMA_FIELD_TYPE_MISMATCH;

@@ -80,6 +80,7 @@ public:
    *                 - LOCKED_CONCURRENCY_CONFLICT 与其它事务有冲突
    */
   RC visit_record(Table *table, Record &record, bool readonly) override;
+  RC update_record(Table *table, Record &record, int offset, int index, Value &value) override;
 
   RC start_if_need() override;
   RC commit() override;

@@ -185,6 +185,19 @@ RC MvccTrx::delete_record(Table * table, Record &record)
   return RC::SUCCESS;
 }
 
+RC MvccTrx::update_record(Table *table, Record &record, int offset, int index, Value &value) {
+  Field begin_field;
+  Field end_field;
+  trx_fields(table, begin_field, end_field);
+
+  begin_field.set_int(record, -trx_id_);
+  end_field.set_int(record, trx_kit_.max_trx_id());
+
+  RC rc = table->update_record(record, offset, index, value);
+
+  return rc;
+}
+
 RC MvccTrx::visit_record(Table *table, Record &record, bool readonly)
 {
   Field begin_field;
