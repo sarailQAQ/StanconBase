@@ -98,6 +98,8 @@ RC PhysicalPlanGenerator::create_plan(TableGetLogicalOperator &table_get_oper, u
   // 看看是否有可以用于索引查找的表达式
   Table *table = table_get_oper.table();
 
+  std::vector<Field> candidate_field;
+
   Index *index = nullptr;
   ValueExpr *value_expr = nullptr;
   for (auto &expr : predicates) {

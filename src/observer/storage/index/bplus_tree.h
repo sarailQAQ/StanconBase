@@ -134,7 +134,7 @@ public:
     attr_types_ = attr_types;
   }
 
-  int operator()(const char* v1, const char* v2) const {
+  int operator()(const char* v1, const char* v2 , bool compare_rid = true) const {
     int offset = 0;
     auto compare_count = attr_types_.size();
 
@@ -146,6 +146,7 @@ public:
 
       offset += attr_lengths_[i];
     }
+    if (!compare_rid) return 0;
 
     const RID* rid1 = (const RID*)(v1 + offset);
     const RID* rid2 = (const RID*)(v2 + offset);

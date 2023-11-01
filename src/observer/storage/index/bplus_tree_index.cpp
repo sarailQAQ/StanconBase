@@ -145,7 +145,7 @@ IndexScanner *BplusTreeIndex::create_scanner(
   BplusTreeIndexScanner *index_scanner = new BplusTreeIndexScanner(index_handler_);
   RC rc = index_scanner->open(left_key, left_len, left_inclusive, right_key, right_len, right_inclusive);
   if (rc != RC::SUCCESS) {
-    LOG_WARN("failed to open index scanner. rc=%d:%s", rc, strrc(rc));
+    LOG_ERROR("failed to open index scanner. rc=%d:%s", rc, strrc(rc));
     delete index_scanner;
     return nullptr;
   }
