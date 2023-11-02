@@ -129,7 +129,7 @@ private:
 
 class KeyComparator {
 public:
-  void init(std::vector<AttrType> attr_types, std::vector<int32_t> attr_lengths)  {
+  void init(std::vector<AttrType> attr_types, std::vector<int32_t> attr_lengths, bool is_unique = false)  {
     attr_lengths_ = attr_lengths;
     attr_types_ = attr_types;
   }
@@ -138,7 +138,7 @@ public:
     int offset = 0;
     auto compare_count = attr_types_.size();
 
-    AttrComparator attr_comparator;
+    AttrComparator attr_comparator{};
     for (int i = 0 ; i < compare_count; i++) {
       attr_comparator.init(attr_types_[i], attr_lengths_[i]);
       auto result = attr_comparator(v1 + offset, v2 + offset);
@@ -249,7 +249,7 @@ private:
 struct IndexFileHeader 
 {
   static size_t class_size() {
-      return sizeof(PageNum ) + sizeof (int32_t) * 3;
+    return sizeof(PageNum ) + sizeof (int32_t) * 3 + sizeof(bool );
   }
   IndexFileHeader()
   {
@@ -263,6 +263,7 @@ struct IndexFileHeader
   int32_t internal_max_size;  ///< 内部节点最大的键值对数
   int32_t leaf_max_size;      ///< 叶子节点最大的键值对数
   int32_t key_length;         ///< attr length + sizeof(RID)
+  bool is_unique;
 
   std::vector<int32_t> attr_lengths_;  ///< 每个属性的长度
   std::vector<AttrType> attr_types_;   ///< 每个属性的类型
@@ -507,11 +508,8 @@ public:
    * 此函数创建一个名为fileName的索引。
    * attrType描述被索引属性的类型，attrLength描述被索引属性的长度
    */
-  RC create(const char *file_name, 
-            std::vector<AttrType> attr_types,
-            std::vector<int32_t> attr_lens,
-            int internal_max_size = -1, 
-            int leaf_max_size = -1);
+  RC create(const char *file_name, std::vector<AttrType> attr_types, std::vector<int32_t> attr_lens,
+      int internal_max_size = -1, int leaf_max_size = -1, bool is_unique = false);
 
   /**
    * 打开名为fileName的索引文件。
@@ -531,14 +529,14 @@ public:
      * 即向索引中插入一个值为（user_key，rid）的键值对
      * @note 这里假设user_key的内存大小与attr_length 一致
    */
-  RC insert_entry(const char* user_keys[], int total_offset, const RID* rid);
+  RC insert_entry(const char *idx_keys, int total_offset, const RID* rid);
 
   /**
      * 从IndexHandle句柄对应的索引中删除一个值为（*pData，rid）的索引项
      * @return RECORD_INVALID_KEY 指定值不存在
      * @note 这里假设user_key的内存大小与attr_length 一致
    */
-  RC delete_entry(const char* user_keys[], int total_offset, const RID* rid);
+  RC delete_entry(const char *idx_key, int total_offset, const RID* rid);
 
   bool is_empty() const;
 
@@ -610,7 +608,7 @@ protected:
   RC adjust_root(LatchMemo &latch_memo, Frame *root_frame);
 
 private:
-  common::MemPoolItem::unique_ptr make_key(const char* user_keys[], int total_offset, const RID& rid);
+  common::MemPoolItem::unique_ptr make_key(const char *idx_key, int total_offset, const RID& rid);
   void free_key(char *key);
 
 protected:

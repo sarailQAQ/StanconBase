@@ -243,7 +243,7 @@ RC RecordPageHandler::update_record(int offset, int len, int index, Value &value
   char       *change_loc = (char *)((uint64_t)(origin_data) + offset);
   const char *data       = value.data();
   memset(change_loc, 0, len);
-  memcpy(change_loc, data, value.length());
+  memcpy(change_loc, data, len);
 //  memcpy(change_loc,data, value.length());
 //  memcpy(change_loc, data, value.length());// +1是保证\0也复制进去了
   frame_->mark_dirty();

@@ -151,9 +151,9 @@ RC Table::open(const char *meta_file, const char *base_dir)
 
   const int index_num = table_meta_.index_num();
   for (int i = 0; i < index_num; i++) {
-    std::vector<const FieldMeta*> index_field_metas;
-    const IndexMeta *index_meta = table_meta_.index(i);
-    for (auto& field_name : index_meta->fields()) {
+    std::vector<const FieldMeta *> index_field_metas;
+    const IndexMeta               *index_meta = table_meta_.index(i);
+    for (auto &field_name : index_meta->fields()) {
       const FieldMeta *field_meta = table_meta_.field(field_name.c_str());
       if (field_meta == nullptr) {
         LOG_ERROR("Found invalid index meta info which has a non-exists field. table=%s, index=%s, field=%s",
@@ -166,7 +166,7 @@ RC Table::open(const char *meta_file, const char *base_dir)
       index_field_metas.push_back(field_meta);
     }
 
-    BplusTreeIndex *index      = new BplusTreeIndex();
+    auto *index      = new BplusTreeIndex();
     std::string     index_file = table_index_file(base_dir, name(), index_meta->name());
     rc                         = index->open(index_file.c_str(), *index_meta, index_field_metas);
     if (rc != RC::SUCCESS) {
@@ -379,9 +379,9 @@ RC Table::get_record_scanner(RecordFileScanner &scanner, Trx *trx, bool readonly
   return rc;
 }
 
-RC Table::create_index(Trx *trx, std::vector<const FieldMeta *> field_metas, const char *index_name)
+RC Table::create_index(Trx *trx, std::vector<const FieldMeta *> field_metas, const char *index_name, bool is_unique)
 {
-  if (common::is_blank(index_name) ||  field_metas.empty()) {
+  if (common::is_blank(index_name) || field_metas.empty()) {
     LOG_INFO("Invalid input arguments, table name is %s, index_name is blank or attribute_name is blank", name());
     return RC::INVALID_ARGUMENT;
   }
@@ -397,7 +397,7 @@ RC Table::create_index(Trx *trx, std::vector<const FieldMeta *> field_metas, con
   // 创建索引相关数据
   BplusTreeIndex *index      = new BplusTreeIndex();
   std::string     index_file = table_index_file(base_dir_.c_str(), name(), index_name);
-  rc                         = index->create(index_file.c_str(), new_index_meta, field_metas);
+  rc                         = index->create(index_file.c_str(), new_index_meta, field_metas, is_unique);
   if (rc != RC::SUCCESS) {
     delete index;
     LOG_ERROR("Failed to create bplus tree index. file name=%s, rc=%d:%s", index_file.c_str(), rc, strrc(rc));
@@ -489,19 +489,79 @@ RC Table::delete_record(const Record &record)
   return rc;
 }
 
-RC Table::update_record(Record &record, const FieldMeta* fieldMeta, int index, Value &value)
-{
+RC Table::update_record(Record &record, const FieldMeta *fieldMeta, int idx, Value &value) {
   RC     rc = RC::SUCCESS;
   Record old_record(record);
-  rc = record_handler_->update_record(fieldMeta->offset(),fieldMeta->len(), index, value, record);
+  Value  old_value = Value(fieldMeta->type(), old_record.data() + fieldMeta->offset(), fieldMeta->len());
+  rc = delete_entry_of_indexes(old_record.data(), old_record.rid(), true);
   if (rc != RC::SUCCESS) {
+//    record_handler_->update_record(fieldMeta->offset(), fieldMeta->len(), idx, old_value, record);
+    insert_entry_of_indexes(old_record.data(), old_record.rid());
+    LOG_ERROR("Update record idx failed. table name=%s, rc=%s", table_meta_.name(), strrc(rc));
+    return rc;
+  }
+
+  rc = record_handler_->update_record(fieldMeta->offset(), fieldMeta->len(), idx, value, record);
+  if (rc != RC::SUCCESS) {
+    record_handler_->update_record(fieldMeta->offset(), fieldMeta->len(), idx, old_value, record);
+    insert_entry_of_indexes(record.data(), record.rid());
     LOG_ERROR("Update record failed. table name=%s, rc=%s", table_meta_.name(), strrc(rc));
     return rc;
   }
-  for (auto index : indexes_) {
-    index->delete_entry(old_record.data(), &old_record.rid());
-    index->insert_entry(record.data(), &record.rid());
+
+  rc = insert_entry_of_indexes(record.data(), record.rid());
+  if (rc != RC::SUCCESS) {
+    record_handler_->update_record(fieldMeta->offset(), fieldMeta->len(), idx, old_value, record);
+    insert_entry_of_indexes(old_record.data(), old_record.rid());
+    LOG_ERROR("Update record idx failed. table name=%s, rc=%s", table_meta_.name(), strrc(rc));
+    return rc;
   }
+
+  return rc;
+}
+
+RC Table::update_record(Table *table, Record &record, std::vector<const FieldMeta*> fieldMeta, std::vector<int> idxs, std::vector<Value> &values) {
+  RC     rc = RC::SUCCESS;
+  Record old_record(record);
+  std::vector<Value> old_values;
+  for (auto& field_meta : fieldMeta) {
+    old_values.emplace_back(field_meta->type(), old_record.data() + field_meta->offset(), field_meta->len());
+  }
+
+  rc = delete_entry_of_indexes(old_record.data(), old_record.rid(), true);
+  if (rc != RC::SUCCESS) {
+    //    record_handler_->update_record(fieldMeta->offset(), fieldMeta->len(), idx, old_value, record);
+    insert_entry_of_indexes(old_record.data(), old_record.rid());
+    LOG_ERROR("Update record idx failed. table name=%s, rc=%s", table_meta_.name(), strrc(rc));
+    return rc;
+  }
+
+  for (int i = 0; i < fieldMeta.size(); i++) {
+    auto &field_meta = fieldMeta[i];
+    auto& idx = idxs[i];
+    auto& value = values[i];
+    rc = record_handler_->update_record(field_meta->offset(), field_meta->len(), idx, value, record);
+    if (rc != RC::SUCCESS) {
+//      record_handler_->update_record(field_meta->offset(), field_meta->len(), idx, old_value, record);
+      insert_entry_of_indexes(record.data(), record.rid());
+      LOG_ERROR("Update record failed. table name=%s, rc=%s", table_meta_.name(), strrc(rc));
+      return rc;
+    }
+  }
+
+  rc = insert_entry_of_indexes(record.data(), record.rid());
+  if (rc != RC::SUCCESS) {
+    for (int i = 0; i < fieldMeta.size(); i++) {
+      auto &field_meta = fieldMeta[i];
+      auto& idx = idxs[i];
+      auto& value = old_values[i];
+      record_handler_->update_record(field_meta->offset(), field_meta->len(), idx, value, record);
+    }
+    insert_entry_of_indexes(old_record.data(), old_record.rid());
+    LOG_ERROR("Update record idx failed. table name=%s, rc=%s", table_meta_.name(), strrc(rc));
+    return rc;
+  }
+
   return rc;
 }
 
@@ -540,7 +600,7 @@ Index *Table::find_index(const char *index_name) const
   }
   return nullptr;
 }
-Index *Table::find_index_by_fields(std::vector<std::string>& field_name) const
+Index *Table::find_index_by_fields(std::vector<std::string> &field_name) const
 {
   const TableMeta &table_meta = this->table_meta();
   const IndexMeta *index_meta = table_meta.find_index_by_fields(field_name);

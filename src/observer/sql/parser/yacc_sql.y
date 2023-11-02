@@ -114,6 +114,7 @@ ArithmeticExpr *create_arithmetic_expression(ArithmeticExpr::Type type,
         AVG
         ORDER
         BY
+        UNIQUE
 
 /** union 中定义各种数据类型，真实生成的代码也是union类型，所以不能有非POD类型的数据 **/
 %union {
@@ -133,6 +134,7 @@ ArithmeticExpr *create_arithmetic_expression(ArithmeticExpr::Type type,
   std::vector<std::string> *        relation_list;
   std::vector<RelWithConditions> *  join_relation_list;
   std::vector<OrderByItem> *        order_by_item_list;
+  std::vector<UpdateSetSqlNode>*    update_set_list;
   OrderByItem *                     order_by_item;
   OrderByType                       order_type;
   char *                            string;
@@ -175,6 +177,8 @@ ArithmeticExpr *create_arithmetic_expression(ArithmeticExpr::Type type,
 %type <sql_node>            select_stmt
 %type <sql_node>            insert_stmt
 %type <sql_node>            update_stmt
+%type <sql_node>            update_set
+%type <update_set_list>            update_set_list
 %type <sql_node>            delete_stmt
 %type <sql_node>            create_table_stmt
 %type <sql_node>            drop_table_stmt
@@ -317,9 +321,25 @@ create_index_stmt:    /*create index 语句的语法解析树*/
       if ($8 != nullptr) {
         create_index.attribute_names.insert(create_index.attribute_names.end(), $8->begin(), $8->end());
       }
+      create_index.is_unique = false;
       free($3);
       free($5);
       free($7);
+    }
+    | CREATE UNIQUE INDEX ID ON ID LBRACE rel_attr attr_list RBRACE {
+        $$ = new ParsedSqlNode(SCF_CREATE_INDEX);
+        CreateIndexSqlNode &create_index = $$->create_index;
+        create_index.index_name = $4;
+        create_index.relation_name = $6;
+        create_index.attribute_names.push_back(*$8);
+        if ($9 != nullptr) {
+           create_index.attribute_names.insert(create_index.attribute_names.end(), $9->begin(), $9->end());
+        }
+        create_index.is_unique = true;
+        printf("uu ok!\n");
+        free($4);
+        free($6);
+        free($8);
     }
     ;
 
@@ -470,18 +490,17 @@ delete_stmt:    /*  delete 语句的语法解析树*/
     }
     ;
 update_stmt:      /*  update 语句的语法解析树*/
-    UPDATE ID SET ID EQ value where
+    UPDATE ID SET update_set_list where
     {
       $$ = new ParsedSqlNode(SCF_UPDATE);
       $$->update.relation_name = $2;
-      $$->update.attribute_name = $4;
-      $$->update.value = *$6;
-      if ($7 != nullptr) {
-        $$->update.conditions.swap(*$7);
-        delete $7;
+      $$->update.update_set = *$4;
+      if ($5 != nullptr) {
+        $$->update.conditions.swap(*$5);
+        delete $5;
       }
       free($2);
-      free($4);
+      delete $4;
     }
     ;
 select_stmt:        /*  select 语句的语法解析树*/
@@ -888,6 +907,31 @@ explain_stmt:
       $$->explain.sql_node = std::unique_ptr<ParsedSqlNode>($2);
     }
     ;
+
+update_set:
+    ID EQ value
+    {
+        $$ = new ParsedSqlNode(SCF_UPDATE_SET);
+        $$->update_set.name  = $1;
+        $$->update_set.value = *$3;
+        free($1);
+        delete $3;
+    }
+    ;
+
+update_set_list:
+    update_set
+    {
+          $$ = new std::vector<UpdateSetSqlNode>;
+          $$->push_back($1->update_set);
+          delete $1;
+    }
+    | update_set_list COMMA update_set
+     {
+           $$->push_back($3->update_set);
+           delete $3;
+     }
+     ;
 
 set_variable_stmt:
     SET ID EQ value

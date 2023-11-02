@@ -169,14 +169,30 @@ struct DeleteSqlNode
 };
 
 /**
+ * @brief 设置变量的值
+ * @ingroup SQLParser
+ * @note 当前还没有查询变量
+ */
+struct SetVariableSqlNode
+{
+  std::string name;
+  Value      value;
+};
+
+struct UpdateSetSqlNode
+{
+  std::string name;
+  Value       value;
+};
+
+/**
  * @brief 描述一个update语句
  * @ingroup SQLParser
  */
 struct UpdateSqlNode
 {
   std::string                   relation_name;   ///< Relation to update
-  std::string                   attribute_name;  ///< 更新的字段，仅支持一个字段
-  Value                         value;           ///< 更新的值，仅支持一个字段
+  std::vector<UpdateSetSqlNode> update_set;
   std::vector<ConditionSqlNode> conditions;
 };
 
@@ -226,6 +242,7 @@ struct CreateIndexSqlNode
   std::string index_name;      ///< Index name
   std::string relation_name;   ///< Relation name
   std::vector<RelAttrSqlNode> attribute_names;  ///< Attribute name
+  bool is_unique;
 };
 
 /**
@@ -263,16 +280,7 @@ struct LoadDataSqlNode
   std::string file_name;
 };
 
-/**
- * @brief 设置变量的值
- * @ingroup SQLParser
- * @note 当前还没有查询变量
- */
-struct SetVariableSqlNode
-{
-  std::string name;
-  Value       value;
-};
+
 
 class ParsedSqlNode;
 
@@ -329,6 +337,7 @@ enum SqlCommandFlag
   SCF_EXIT,
   SCF_EXPLAIN,
   SCF_SET_VARIABLE,  ///< 设置变量
+  SCF_UPDATE_SET,
 };
 /**
  * @brief 表示一个SQL语句
@@ -353,6 +362,7 @@ public:
   LoadDataSqlNode     load_data;
   ExplainSqlNode      explain;
   SetVariableSqlNode  set_variable;
+  UpdateSetSqlNode    update_set;
 
 public:
   ParsedSqlNode();
