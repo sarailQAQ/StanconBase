@@ -680,7 +680,7 @@ class TestSuite:
       line_num = len(lines1)
       for i in range(line_num):
         if lines1[i].upper() != lines2[i].upper():
-          _logger.info('file1=%s, file2=%s, line1=%s, line2=%s', file1, file2, lines1[i], lines2[i])
+          _logger.info('Line %d unmatched: file1=%s, file2=%s, result1=%s, result2=%s', i+1, file1, file2, lines1[i], lines2[i])
           return False
       return True
 

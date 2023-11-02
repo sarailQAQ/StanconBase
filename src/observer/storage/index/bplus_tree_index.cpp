@@ -63,7 +63,7 @@ RC BplusTreeIndex::create(
   return RC::SUCCESS;
 }
 
-RC BplusTreeIndex::open(const char *file_name, const IndexMeta &index_meta, std::vector<const FieldMeta*>& field_metas)
+RC BplusTreeIndex::open(const char *file_name, const IndexMeta &index_meta, std::vector<const FieldMeta *> &field_metas)
 {
   if (inited_) {
     LOG_WARN("Failed to open index due to the index has been initedd before. file_name:%s, index:%s, field:%s",
@@ -73,7 +73,7 @@ RC BplusTreeIndex::open(const char *file_name, const IndexMeta &index_meta, std:
     return RC::RECORD_OPENNED;
   }
 
-  Index::init(index_meta, field_metas, false);
+  Index::init(index_meta, field_metas, index_meta.is_unique());
 
   RC rc = index_handler_.open(file_name, field_metas);
   if (RC::SUCCESS != rc) {
@@ -123,13 +123,11 @@ RC BplusTreeIndex::insert_entry(const char *record, const RID *rid) {
     keys[i] = record + field_metas_[i].offset();
     offset += field_metas_[i].len();
   }
-  if (is_unique_ ) {
+  if (is_unique_  && field_metas_.size() == 1) {
     // 检查是否存在
-    if (field_metas_.size() > 1)
-      LOG_ERROR("unique multi index!");
     std::list<RID> res;
-    index_handler_.get_entry(keys[0], offset, res);
-    if (!res.empty()) return RC::RECORD_INVALID_KEY;
+    rc = index_handler_.get_entry(keys[0], offset, res);
+    if (rc != RC::RECORD_EOF && !res.empty()) return RC::RECORD_INVALID_KEY;
   }
   rc = index_handler_.insert_entry(keys, offset, rid);
   return rc;
