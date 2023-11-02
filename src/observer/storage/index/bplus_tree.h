@@ -529,14 +529,14 @@ public:
      * 即向索引中插入一个值为（user_key，rid）的键值对
      * @note 这里假设user_key的内存大小与attr_length 一致
    */
-  RC insert_entry(const char* user_keys[], int total_offset, const RID* rid);
+  RC insert_entry(const char *idx_keys, int total_offset, const RID* rid);
 
   /**
      * 从IndexHandle句柄对应的索引中删除一个值为（*pData，rid）的索引项
      * @return RECORD_INVALID_KEY 指定值不存在
      * @note 这里假设user_key的内存大小与attr_length 一致
    */
-  RC delete_entry(const char* user_keys[], int total_offset, const RID* rid);
+  RC delete_entry(const char *idx_key, int total_offset, const RID* rid);
 
   bool is_empty() const;
 
@@ -608,7 +608,7 @@ protected:
   RC adjust_root(LatchMemo &latch_memo, Frame *root_frame);
 
 private:
-  common::MemPoolItem::unique_ptr make_key(const char* user_keys[], int total_offset, const RID& rid);
+  common::MemPoolItem::unique_ptr make_key(const char *idx_key, int total_offset, const RID& rid);
   void free_key(char *key);
 
 protected:

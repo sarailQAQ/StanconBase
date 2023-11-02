@@ -57,7 +57,7 @@ void test_insert() {
         LOG_INFO("Insert %d. rid=%s", i, rid.to_string().c_str());
       }
       const char* tmp[1] = {(const char*)&i};
-      rc = handler->insert_entry(tmp, sizeof(i), &rid);
+      rc = handler->insert_entry(tmp[0], sizeof(i), &rid);
       ASSERT_EQ(RC::SUCCESS, rc);
       handler->print_tree();
       ASSERT_EQ(true, handler->validate_tree());
@@ -78,7 +78,7 @@ void test_insert() {
         LOG_INFO("Insert %d. rid=%s", i, rid.to_string().c_str());
       }
       const char* tmp[1] = {(const char*)&i};
-      rc = handler->insert_entry(tmp, sizeof(i), &rid);
+      rc = handler->insert_entry(tmp[0], sizeof(i), &rid);
       ASSERT_EQ(RC::SUCCESS, rc);
       handler->print_tree();
       ASSERT_EQ(true, handler->validate_tree());
@@ -99,7 +99,7 @@ void test_insert() {
         LOG_INFO("Insert %d. rid=%s", i, rid.to_string().c_str());
       }
       const char* tmp[1] = {(const char*)&i};
-      rc = handler->insert_entry(tmp, sizeof(i), &rid);
+      rc = handler->insert_entry(tmp[0], sizeof(i), &rid);
       ASSERT_EQ(RC::SUCCESS, rc);
       ASSERT_EQ(true, handler->validate_tree());
     }
@@ -123,7 +123,7 @@ void test_insert() {
       LOG_INFO("check duplicate Insert %d. rid=%s. i%TIMES=%d", i, rid.to_string().c_str(), i % TIMES);
     }
     const char* tmp[1] = {(const char*)&i};
-    rc = handler->insert_entry(tmp, sizeof(i), &rid);
+    rc = handler->insert_entry(tmp[0], sizeof(i), &rid);
     int t = i % TIMES;
     if (t == 0 || t == 1 || t == 2) {
       if (rc != RC::RECORD_DUPLICATE_KEY) {
@@ -180,7 +180,7 @@ void test_delete() {
       }
 
       const char* tmp[1] = {(const char*)&i};
-      rc = handler->delete_entry(tmp, sizeof(i), &rid);
+      rc = handler->delete_entry(tmp[0], sizeof(i), &rid);
       if (rc != RC::SUCCESS) {
         LOG_WARN("failed to delete entry. i=%d, rid=%s", i, rid.to_string().c_str());
       }
@@ -206,7 +206,7 @@ void test_delete() {
         LOG_INFO("Begin to delete entry of index,  rid: %s", rid.to_string().c_str());
       }
       const char* tmp[1] = {(const char*)&i};
-      rc = handler->delete_entry(tmp, sizeof(i), &rid);
+      rc = handler->delete_entry(tmp[0], sizeof(i), &rid);
 
       ASSERT_EQ(true, handler->validate_tree());
       ASSERT_EQ(RC::SUCCESS, rc);
@@ -260,7 +260,7 @@ void test_delete() {
         LOG_INFO("Begin to delete entry of index,  rid: %s", rid.to_string().c_str());
       }
       const char* tmp[1] = {(const char*)&i};
-      rc = handler->delete_entry(tmp, sizeof(i), &rid);
+      rc = handler->delete_entry(tmp[0], sizeof(i), &rid);
 
       ASSERT_EQ(true, handler->validate_tree());
       ASSERT_EQ(RC::SUCCESS, rc);
@@ -283,7 +283,7 @@ void test_delete() {
         LOG_INFO("Begin to delete entry of index,  rid: %s", rid.to_string().c_str());
       }
       const char* tmp[1] = {(const char*)&i};
-      rc = handler->delete_entry(tmp, sizeof(i), &rid);
+      rc = handler->delete_entry(tmp[0], sizeof(i), &rid);
 
       ASSERT_EQ(true, handler->validate_tree());
       ASSERT_EQ(RC::SUCCESS, rc);
@@ -303,7 +303,7 @@ void test_delete() {
       LOG_INFO("Begin to insert entry of index,  rid: %s", rid.to_string().c_str());
     }
     const char* tmp[1] = {(const char*)&i};
-    rc = handler->insert_entry(tmp, sizeof(i), &rid);
+    rc = handler->insert_entry(tmp[0], sizeof(i), &rid);
     int t = i % TIMES;
     if (t == 0 || t == 1 || t == 2) {
       ASSERT_EQ(RC::SUCCESS, rc);
@@ -499,7 +499,7 @@ TEST(test_bplus_tree, test_chars) {
     rid.page_num = 0;
     rid.slot_num = i;
     const char* tmp[1] = {keys[i]};
-    rc = handler->insert_entry(tmp, sizeof(keys[i]), &rid);
+    rc = handler->insert_entry(tmp[0], sizeof(keys[i]), &rid);
     ASSERT_EQ(RC::SUCCESS, rc);
   }
 
@@ -541,7 +541,7 @@ TEST(test_bplus_tree, test_scanner) {
     rid.page_num = 0;
     rid.slot_num = key;
     const char* tmp[1] = {(const char*)&key};
-    rc = handler->insert_entry(tmp, sizeof(key), &rid);
+    rc = handler->insert_entry(tmp[0], sizeof(key), &rid);
     ASSERT_EQ(RC::SUCCESS, rc);
   }
 

@@ -1358,7 +1358,7 @@ RC BplusTreeHandler::create_new_tree(const char *key, const RID *rid)
   return rc;
 }
 
-MemPoolItem::unique_ptr BplusTreeHandler::make_key(const char* user_keys[], int total_offset, const RID& rid) {
+MemPoolItem::unique_ptr BplusTreeHandler::make_key(const char *idx_key, int total_offset, const RID& rid) {
   // 分配内存来容纳复合键
   MemPoolItem::unique_ptr key = mem_pool_item_->alloc_unique_ptr();
   if (key == nullptr) {
@@ -1367,20 +1367,20 @@ MemPoolItem::unique_ptr BplusTreeHandler::make_key(const char* user_keys[], int 
   }
   // 将所有用户键按顺序复制到复合键中
   char* composite_key_data = static_cast<char*>(key.get());
-  memcpy(composite_key_data, *user_keys, total_offset);
+  memcpy(composite_key_data, idx_key, total_offset);
   // 将 RID 数据复制到复合键的末尾
   memcpy(composite_key_data + total_offset, &rid, sizeof(rid));
   return key;
 }
 
 // 改造成接收多个key vector<const char*>keys
-RC BplusTreeHandler::insert_entry(const char* user_keys[], int total_offset, const RID* rid) {
-  if (user_keys[0] == nullptr /*|| rid == nullptr*/) {
+RC BplusTreeHandler::insert_entry(const char *idx_keys, int total_offset, const RID* rid) {
+  if (idx_keys == nullptr /*|| rid == nullptr*/) {
     LOG_WARN("Invalid arguments, key is empty or rid is empty");
     return RC::INVALID_ARGUMENT;
   }
 
-  MemPoolItem::unique_ptr pkey = make_key(user_keys, total_offset, *rid);
+  MemPoolItem::unique_ptr pkey = make_key(idx_keys, total_offset, *rid);
   if (pkey == nullptr) {
     LOG_WARN("Failed to alloc memory for key.");
     return RC::NOMEM;
@@ -1655,9 +1655,13 @@ RC BplusTreeHandler::delete_entry_internal(LatchMemo &latch_memo, Frame *leaf_fr
   return coalesce_or_redistribute<LeafIndexNodeHandler>(latch_memo, leaf_frame);
 }
 
-RC BplusTreeHandler::delete_entry(const char* user_keys[], int total_offset, const RID* rid)
-{
-  MemPoolItem::unique_ptr pkey = make_key(user_keys, total_offset, *rid);
+RC BplusTreeHandler::delete_entry(const char *idx_key, int total_offset, const RID* rid) {
+  if (idx_key == nullptr /*|| rid == nullptr*/) {
+    LOG_WARN("Invalid arguments, key is empty or rid is empty");
+    return RC::INVALID_ARGUMENT;
+  }
+
+  MemPoolItem::unique_ptr pkey = make_key(idx_key, total_offset, *rid);
   if (nullptr == pkey) {
     LOG_WARN("Failed to alloc memory for key. size=%d", file_header_.key_length);
     return RC::NOMEM;
@@ -1676,7 +1680,7 @@ RC BplusTreeHandler::delete_entry(const char* user_keys[], int total_offset, con
     LOG_WARN("failed to find leaf page. rc =%s", strrc(rc));
     return rc;
   }
-  // TODO 传入一个 user_keys.size
+  // TODO 传入一个 idx_key.size
   return delete_entry_internal(latch_memo, leaf_frame, key);
 }
 RC BplusTreeHandler::drop() {
@@ -1761,9 +1765,9 @@ RC BplusTreeScanner::open(const char *left_user_key, int left_len, bool left_inc
     MemPoolItem::unique_ptr left_pkey;
     const char* keys[1] = {fixed_left_key};
     if (left_inclusive) {
-      left_pkey = tree_handler_.make_key(keys, size, *RID::min());
+      left_pkey = tree_handler_.make_key(keys[0], size, *RID::min());
     } else {
-      left_pkey = tree_handler_.make_key(keys, size, *RID::max());
+      left_pkey = tree_handler_.make_key(keys[0], size, *RID::max());
     }
 
     const char* left_key = (const char*)left_pkey.get();
@@ -1826,9 +1830,9 @@ RC BplusTreeScanner::open(const char *left_user_key, int left_len, bool left_inc
     }
     const char* right_keys[1] = {fixed_right_key};
     if (right_inclusive) {
-      right_key_ = tree_handler_.make_key(right_keys, size, *RID::max());
+      right_key_ = tree_handler_.make_key(right_keys[0], size, *RID::max());
     } else {
-      right_key_ = tree_handler_.make_key(right_keys, size, *RID::min());
+      right_key_ = tree_handler_.make_key(right_keys[0], size, *RID::min());
     }
 
     if (fixed_right_key != right_user_key) {
