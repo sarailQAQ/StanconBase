@@ -17,6 +17,8 @@ See the Mulan PSL v2 for more details. */
 RC Index::init(const IndexMeta &index_meta, std::vector<const FieldMeta *> field_metas)
 {
   index_meta_ = index_meta;
-  field_metas_ = field_metas;
+  for (auto field : field_metas) {
+    field_metas_.push_back(*field);
+  }
   return RC::SUCCESS;
 }
