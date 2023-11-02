@@ -502,14 +502,13 @@ RC Table::update_record(Record &record, const FieldMeta *fieldMeta, int idx, Val
     return rc;
   }
 
-  rc               = record_handler_->update_record(fieldMeta->offset(), fieldMeta->len(), idx, value, record);
+  rc = record_handler_->update_record(fieldMeta->offset(), fieldMeta->len(), idx, value, record);
   if (rc != RC::SUCCESS) {
-//    record_handler_->update_record(fieldMeta->offset(), fieldMeta->len(), idx, old_value, record);
+    record_handler_->update_record(fieldMeta->offset(), fieldMeta->len(), idx, old_value, record);
+    insert_entry_of_indexes(record.data(), record.rid());
     LOG_ERROR("Update record failed. table name=%s, rc=%s", table_meta_.name(), strrc(rc));
     return rc;
   }
-
-
 
   rc = insert_entry_of_indexes(record.data(), record.rid());
   if (rc != RC::SUCCESS) {

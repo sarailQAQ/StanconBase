@@ -123,7 +123,7 @@ RC BplusTreeIndex::insert_entry(const char *record, const RID *rid) {
     keys[i] = record + field_metas_[i].offset();
     offset += field_metas_[i].len();
   }
-  if (is_unique_  && field_metas_.size() == 1) {
+  if (is_unique_ ) {
     // 检查是否存在
     std::list<RID> res;
     rc = index_handler_.get_entry(keys[0], offset, res);
