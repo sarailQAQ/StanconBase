@@ -21,6 +21,7 @@ See the Mulan PSL v2 for more details. */
 
 #include "sql/parser/value.h"
 
+class ParsedSqlNode;
 class Expression;
 
 /**
@@ -82,6 +83,11 @@ enum CompOp
   NOT_LIKE,     ///< "LIKE"
   IS_NULL,     ///< "is null"
   NOT_NULL,     ///< "is not null"
+  // 以下是扩展的子查询比较条件
+  IN,
+  NOT_IN,
+  EXISTS,
+  NOT_EXISTS,
   NO_OP
 };
 
@@ -107,7 +113,11 @@ struct ConditionSqlNode
                                    ///< 1时，操作符右边是属性名，0时，是属性值
   RelAttrSqlNode  right_attr;      ///< right-hand side attribute if right_is_attr = TRUE 右边的属性
   Value           right_value;     ///< right-hand side value if right_is_attr = FALSE
+  std::vector<Value> values;
+  ParsedSqlNode* sub_selection;
+
 };
+
 
 struct RelWithConditions
 {
@@ -274,7 +284,7 @@ struct SetVariableSqlNode
   Value       value;
 };
 
-class ParsedSqlNode;
+
 
 /**
  * @brief 描述一个explain语句

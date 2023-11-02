@@ -89,6 +89,8 @@ ASC                                     RETURN_TOKEN(ASC);
 CREATE                                  RETURN_TOKEN(CREATE);
 DROP                                    RETURN_TOKEN(DROP);
 NULL                                    RETURN_TOKEN(NULL_T);
+EXISTS                                  RETURN_TOKEN(EXISTS_T);
+IN                                      RETURN_TOKEN(IN_T);
 IS                                      RETURN_TOKEN(IS);
 NOT                                     RETURN_TOKEN(NOT);
 LIKE                                    RETURN_TOKEN(LIKE_C);

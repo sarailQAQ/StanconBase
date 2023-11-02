@@ -103,6 +103,8 @@ ArithmeticExpr *create_arithmetic_expression(ArithmeticExpr::Type type,
         GE
         NE
         IS
+        IN_T
+        EXISTS_T
         NULL_T
         // like已经在词法解析之中解析出
         LIKE_C
@@ -153,7 +155,10 @@ ArithmeticExpr *create_arithmetic_expression(ArithmeticExpr::Type type,
 %type <condition>           condition
 %type <value>               value
 %type <number>              number
+%type <comp>                sub_comp_op
 %type <comp>                comp_op
+%type <comp>                in
+%type <comp>                exists
 %type <rel_attr>            rel_attr
 %type <order_by_item_list>  order_by_item_list
 %type <order_by_item_list>  order_by
@@ -805,7 +810,71 @@ condition_list:
     }
     ;
 condition:
-    rel_attr comp_op value
+    value in LBRACE value value_list RBRACE
+    {
+      $$ = new ConditionSqlNode;
+      $$->left_is_attr = 0;
+      $$->left_value = *$1;
+      $$->right_is_attr = 0;
+      if ($5 != nullptr) {
+        $$->values.swap(*$5);
+      }
+      $$->values.emplace_back(*$4);
+      $$->comp = $2;
+
+      delete $1;
+      delete $4;
+    }
+    | rel_attr in LBRACE value value_list RBRACE
+    {
+      $$ = new ConditionSqlNode;
+      $$->left_is_attr = 1;
+      $$->left_attr = *$1;
+      $$->right_is_attr = 0;
+      if ($5 != nullptr) {
+        $$->values.swap(*$5);
+      }
+      $$->values.emplace_back(*$4);
+      $$->comp = $2;
+
+      delete $1;
+      delete $4;
+    }
+    | rel_attr sub_comp_op LBRACE select_stmt RBRACE
+      {
+        $$ = new ConditionSqlNode;
+        $$->left_is_attr = 1;
+        $$->left_attr = *$1;
+        $$->right_is_attr = 0;
+        $$->sub_selection = $4;
+        $$->comp = $2;
+
+        delete $1;
+        delete $4;
+      }
+    | value sub_comp_op LBRACE select_stmt RBRACE
+      {
+        $$ = new ConditionSqlNode;
+        $$->left_is_attr = 0;
+        $$->left_value = *$1;
+        $$->right_is_attr = 0;
+        $$->sub_selection = $4;
+        $$->comp = $2;
+
+        delete $1;
+        delete $4;
+      }
+    | exists LBRACE select_stmt RBRACE
+    {
+      $$ = new ConditionSqlNode;
+      $$->left_is_attr = 0;
+      $$->right_is_attr = 0;
+      $$->sub_selection = $3;
+      $$->comp = $1;
+
+      delete $3;
+    }
+    | rel_attr comp_op value
     {
       $$ = new ConditionSqlNode;
       $$->left_is_attr = 1;
@@ -855,6 +924,18 @@ condition:
     }
     ;
 
+/*子查询专用比较符*/
+sub_comp_op:
+      EQ { $$ = EQUAL_TO; }
+    | LT { $$ = LESS_THAN; }
+    | GT { $$ = GREAT_THAN; }
+    | LE { $$ = LESS_EQUAL; }
+    | GE { $$ = GREAT_EQUAL; }
+    | NE { $$ = NOT_EQUAL; }
+    | IN_T { $$ = IN;}
+    | NOT IN_T {$$ = NOT_IN;}
+    ;
+
 comp_op:
       EQ { $$ = EQUAL_TO; }
     | LT { $$ = LESS_THAN; }
@@ -866,6 +947,14 @@ comp_op:
     | NOT LIKE_C{$$ = NOT_LIKE;}
     | IS {$$ = IS_NULL;}
     | IS NOT {$$ = NOT_NULL;}
+    ;
+in:
+     IN_T {$$ = IN;}
+     | NOT IN_T {$$ = NOT_IN;}
+;
+exists:
+      EXISTS_T {$$ = EXISTS;}
+    | NOT EXISTS_T {$$ = NOT_EXISTS;}
     ;
 
 load_data_stmt:

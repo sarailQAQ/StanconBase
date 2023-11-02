@@ -35,8 +35,8 @@
    especially those whose name start with YY_ or yy_.  They are
    private implementation details that can be changed or removed.  */
 
-#ifndef YY_YY_YACC_SQL_HPP_INCLUDED
-# define YY_YY_YACC_SQL_HPP_INCLUDED
+#ifndef YY_YY_SRC_OBSERVER_SQL_PARSER_YACC_SQL_HPP_INCLUDED
+# define YY_YY_SRC_OBSERVER_SQL_PARSER_YACC_SQL_HPP_INCLUDED
 /* Debug traces.  */
 #ifndef YYDEBUG
 # define YYDEBUG 0
@@ -103,21 +103,23 @@ extern int yydebug;
     GE = 304,                      /* GE  */
     NE = 305,                      /* NE  */
     IS = 306,                      /* IS  */
-    NULL_T = 307,                  /* NULL_T  */
-    LIKE_C = 308,                  /* LIKE_C  */
-    NOT = 309,                     /* NOT  */
-    COUNT = 310,                   /* COUNT  */
-    SUM = 311,                     /* SUM  */
-    MAX = 312,                     /* MAX  */
-    MIN = 313,                     /* MIN  */
-    AVG = 314,                     /* AVG  */
-    ORDER = 315,                   /* ORDER  */
-    BY = 316,                      /* BY  */
-    NUMBER = 317,                  /* NUMBER  */
-    FLOAT = 318,                   /* FLOAT  */
-    ID = 319,                      /* ID  */
-    SSS = 320,                     /* SSS  */
-    UMINUS = 321                   /* UMINUS  */
+    IN_T = 307,                    /* IN_T  */
+    EXISTS_T = 308,                /* EXISTS_T  */
+    NULL_T = 309,                  /* NULL_T  */
+    LIKE_C = 310,                  /* LIKE_C  */
+    NOT = 311,                     /* NOT  */
+    COUNT = 312,                   /* COUNT  */
+    SUM = 313,                     /* SUM  */
+    MAX = 314,                     /* MAX  */
+    MIN = 315,                     /* MIN  */
+    AVG = 316,                     /* AVG  */
+    ORDER = 317,                   /* ORDER  */
+    BY = 318,                      /* BY  */
+    NUMBER = 319,                  /* NUMBER  */
+    FLOAT = 320,                   /* FLOAT  */
+    ID = 321,                      /* ID  */
+    SSS = 322,                     /* SSS  */
+    UMINUS = 323                   /* UMINUS  */
   };
   typedef enum yytokentype yytoken_kind_t;
 #endif
@@ -126,7 +128,7 @@ extern int yydebug;
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
 union YYSTYPE
 {
-#line 119 "yacc_sql.y"
+#line 121 "./src/observer/sql/parser/yacc_sql.y"
 
   ParsedSqlNode *                   sql_node;
   ConditionSqlNode *                condition;
@@ -151,7 +153,7 @@ union YYSTYPE
   float                             floats;
   bool                              bools;
 
-#line 155 "yacc_sql.hpp"
+#line 157 "./src/observer/sql/parser/yacc_sql.hpp"
 
 };
 typedef union YYSTYPE YYSTYPE;
@@ -179,4 +181,4 @@ struct YYLTYPE
 int yyparse (const char * sql_string, ParsedSqlResult * sql_result, void * scanner);
 
 
-#endif /* !YY_YY_YACC_SQL_HPP_INCLUDED  */
+#endif /* !YY_YY_SRC_OBSERVER_SQL_PARSER_YACC_SQL_HPP_INCLUDED  */
