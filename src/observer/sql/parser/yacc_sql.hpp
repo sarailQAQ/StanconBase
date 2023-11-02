@@ -145,6 +145,7 @@ union YYSTYPE
   std::vector<std::string> *        relation_list;
   std::vector<RelWithConditions> *  join_relation_list;
   std::vector<OrderByItem> *        order_by_item_list;
+  std::vector<UpdateSetSqlNode>*    update_set_list;
   OrderByItem *                     order_by_item;
   OrderByType                       order_type;
   char *                            string;
@@ -152,7 +153,7 @@ union YYSTYPE
   float                             floats;
   bool                              bools;
 
-#line 156 "yacc_sql.hpp"
+#line 157 "yacc_sql.hpp"
 
 };
 typedef union YYSTYPE YYSTYPE;

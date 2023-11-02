@@ -181,8 +181,8 @@ struct SetVariableSqlNode
 
 struct UpdateSetSqlNode
 {
-  std::vector<std::string> names;
-  std::vector<Value>       values;
+  std::string name;
+  Value       value;
 };
 
 /**
@@ -192,7 +192,7 @@ struct UpdateSetSqlNode
 struct UpdateSqlNode
 {
   std::string                   relation_name;   ///< Relation to update
-  UpdateSetSqlNode              update_set;
+  std::vector<UpdateSetSqlNode> update_set;
   std::vector<ConditionSqlNode> conditions;
 };
 

@@ -29,8 +29,8 @@ UpdateStmt::UpdateStmt(Table *table, std::vector<std::string> field_names, std::
 RC UpdateStmt::create(Db *db, const UpdateSqlNode &update, Stmt *&stmt)
 {
   const char *table_name = update.relation_name.c_str();
-  if (nullptr == db || nullptr == table_name || update.update_set.names.empty()
-      || update.update_set.values.size() != update.update_set.names.size()) {
+  if (nullptr == db || nullptr == table_name || update.update_set.empty()
+      || update.update_set.size() != update.update_set.size()) {
     LOG_WARN("invalid argument for update. db=%p, table_name=%p",
         db, table_name);
     return RC::INVALID_ARGUMENT;
@@ -47,9 +47,9 @@ RC UpdateStmt::create(Db *db, const UpdateSqlNode &update, Stmt *&stmt)
   std::vector<Value> values;
 
   //  字段校验
-  for (int i = 0; i < update.update_set.names.size(); i++) {
-    auto& attribute_name = update.update_set.names[i];
-    auto& value = update.update_set.values[i];
+  for (auto& set : update.update_set) {
+    auto& attribute_name = set.name;
+    auto& value = set.value;
     Value update_value(value);
 
     const TableMeta &table_meta    = table->table_meta();

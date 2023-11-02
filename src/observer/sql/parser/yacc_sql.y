@@ -134,6 +134,7 @@ ArithmeticExpr *create_arithmetic_expression(ArithmeticExpr::Type type,
   std::vector<std::string> *        relation_list;
   std::vector<RelWithConditions> *  join_relation_list;
   std::vector<OrderByItem> *        order_by_item_list;
+  std::vector<UpdateSetSqlNode>*    update_set_list;
   OrderByItem *                     order_by_item;
   OrderByType                       order_type;
   char *                            string;
@@ -176,7 +177,8 @@ ArithmeticExpr *create_arithmetic_expression(ArithmeticExpr::Type type,
 %type <sql_node>            select_stmt
 %type <sql_node>            insert_stmt
 %type <sql_node>            update_stmt
-%type <sql_node>            update_set_list
+%type <sql_node>            update_set
+%type <update_set_list>            update_set_list
 %type <sql_node>            delete_stmt
 %type <sql_node>            create_table_stmt
 %type <sql_node>            drop_table_stmt
@@ -488,17 +490,17 @@ delete_stmt:    /*  delete 语句的语法解析树*/
     }
     ;
 update_stmt:      /*  update 语句的语法解析树*/
-    UPDATE ID update_set_list where
+    UPDATE ID SET update_set_list where
     {
       $$ = new ParsedSqlNode(SCF_UPDATE);
       $$->update.relation_name = $2;
-      $$->update.update_set = $3->update_set;
-      if ($4 != nullptr) {
-        $$->update.conditions.swap(*$4);
-        delete $4;
+      $$->update.update_set = *$4;
+      if ($5 != nullptr) {
+        $$->update.conditions.swap(*$5);
+        delete $5;
       }
       free($2);
-      delete $3;
+      delete $4;
     }
     ;
 select_stmt:        /*  select 语句的语法解析树*/
@@ -906,23 +908,28 @@ explain_stmt:
     }
     ;
 
-update_set_list:
-    SET ID EQ value
+update_set:
+    ID EQ value
     {
-          $$ = new ParsedSqlNode(SCF_UPDATE_SET);
-          $$->update_set.names.push_back($2);
-          $$->update_set.values.push_back(*$4);
-          printf("111");
-          free($2);
-          delete $4;
+        $$ = new ParsedSqlNode(SCF_UPDATE_SET);
+        $$->update_set.name  = $1;
+        $$->update_set.value = *$3;
+        free($1);
+        delete $3;
     }
-    | update_set_list ',' ID EQ value
+    ;
+
+update_set_list:
+    update_set
+    {
+          $$ = new std::vector<UpdateSetSqlNode>;
+          $$->push_back($1->update_set);
+          delete $1;
+    }
+    | update_set_list COMMA update_set
      {
-           $$->update_set.names.push_back($3);
-           $$->update_set.values.push_back(*$5);
-           printf("111");
-           free($3);
-           delete $5;
+           $$->push_back($3->update_set);
+           delete $3;
      }
      ;
 
