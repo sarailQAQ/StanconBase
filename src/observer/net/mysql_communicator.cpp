@@ -873,7 +873,7 @@ RC MysqlCommunicator::send_column_definition(SqlResult *sql_result, bool &need_d
     const char *table = spec.table_name();
     const char *org_table = spec.table_name();
     const char *name = spec.alias();
-    // const char *org_name = spec.field_name();
+    // const char *org_name = spec.field_names();
     const char *org_name = spec.alias();
     int fixed_len_fields = 0x0c;
     int character_set = 33;

@@ -70,6 +70,10 @@ RC VacuousTrx::update_record(Table *table, Record &record, const FieldMeta* fiel
   return table->update_record(record, fieldMeta, index, value);
 }
 
+RC VacuousTrx::update_record(Table *table, Record &record, std::vector<const FieldMeta *> fieldMeta, std::vector<int> index, std::vector<Value> &value) {
+    return table->update_record(table, record, fieldMeta, index, value);
+}
+
 RC VacuousTrx::start_if_need()
 {
   return RC::SUCCESS;

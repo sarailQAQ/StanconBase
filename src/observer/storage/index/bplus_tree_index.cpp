@@ -119,7 +119,7 @@ RC BplusTreeIndex::insert_entry(const char *record, const RID *rid)
   for (const auto &field_meta : field_metas_) {
     offset += field_meta.len();
   }
-  auto *idx_key = new char[offset];
+  char idx_key[offset];
   memset(idx_key, 0, offset);
   for (const auto &field_meta : field_metas_) {
     memmove(idx_key, record + field_meta.offset(), field_meta.len());
@@ -143,7 +143,7 @@ RC BplusTreeIndex::delete_entry(const char *record, const RID *rid) {
   for (const auto &field_meta : field_metas_) {
     offset += field_meta.len();
   }
-  auto *idx_key = new char[offset];
+  char idx_key[offset];
   memset(idx_key, 0, offset);
   for (const auto &field_meta : field_metas_) {
     memmove(idx_key, record + field_meta.offset(), field_meta.len());

@@ -27,7 +27,7 @@ class UpdateStmt;
 class UpdatePhysicalOperator : public PhysicalOperator
 {
 public:
-  UpdatePhysicalOperator(Table *table, const char * field_name, Value value);
+  UpdatePhysicalOperator(Table *table, std::vector<std::string> field_names, std::vector<Value> value);
 
   ~UpdatePhysicalOperator() override;
 
@@ -44,7 +44,7 @@ public:
 
 private:
   Table *table_ = nullptr;
-  Value value_;
-  const char * field_name_ = nullptr;
+  std::vector<std::string> field_names_;
+  std::vector<Value> values_;
   Trx *trx_ = nullptr;
 };

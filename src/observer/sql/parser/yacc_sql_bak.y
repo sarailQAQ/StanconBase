@@ -780,8 +780,8 @@ set_variable_stmt:
     SET ID EQ value
     {
       $$ = new ParsedSqlNode(SCF_SET_VARIABLE);
-      $$->set_variable.name  = $2;
-      $$->set_variable.value = *$4;
+      $$->update_set.name  = $2;
+      $$->update_set.value = *$4;
       free($2);
       delete $4;
     }

@@ -176,6 +176,7 @@ ArithmeticExpr *create_arithmetic_expression(ArithmeticExpr::Type type,
 %type <sql_node>            select_stmt
 %type <sql_node>            insert_stmt
 %type <sql_node>            update_stmt
+%type <sql_node>            update_set_list
 %type <sql_node>            delete_stmt
 %type <sql_node>            create_table_stmt
 %type <sql_node>            drop_table_stmt
@@ -487,18 +488,17 @@ delete_stmt:    /*  delete 语句的语法解析树*/
     }
     ;
 update_stmt:      /*  update 语句的语法解析树*/
-    UPDATE ID SET ID EQ value where
+    UPDATE ID update_set_list where
     {
       $$ = new ParsedSqlNode(SCF_UPDATE);
       $$->update.relation_name = $2;
-      $$->update.attribute_name = $4;
-      $$->update.value = *$6;
-      if ($7 != nullptr) {
-        $$->update.conditions.swap(*$7);
-        delete $7;
+      $$->update.update_set = $3->update_set;
+      if ($4 != nullptr) {
+        $$->update.conditions.swap(*$4);
+        delete $4;
       }
       free($2);
-      free($4);
+      delete $3;
     }
     ;
 select_stmt:        /*  select 语句的语法解析树*/
@@ -905,6 +905,26 @@ explain_stmt:
       $$->explain.sql_node = std::unique_ptr<ParsedSqlNode>($2);
     }
     ;
+
+update_set_list:
+    SET ID EQ value
+    {
+          $$ = new ParsedSqlNode(SCF_UPDATE_SET);
+          $$->update_set.names.push_back($2);
+          $$->update_set.values.push_back(*$4);
+          printf("111");
+          free($2);
+          delete $4;
+    }
+    | update_set_list ',' ID EQ value
+     {
+           $$->update_set.names.push_back($3);
+           $$->update_set.values.push_back(*$5);
+           printf("111");
+           free($3);
+           delete $5;
+     }
+     ;
 
 set_variable_stmt:
     SET ID EQ value

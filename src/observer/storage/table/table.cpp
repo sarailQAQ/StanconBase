@@ -489,8 +489,7 @@ RC Table::delete_record(const Record &record)
   return rc;
 }
 
-RC Table::update_record(Record &record, const FieldMeta *fieldMeta, int idx, Value &value)
-{
+RC Table::update_record(Record &record, const FieldMeta *fieldMeta, int idx, Value &value) {
   RC     rc = RC::SUCCESS;
   Record old_record(record);
   Value  old_value = Value(fieldMeta->type(), old_record.data() + fieldMeta->offset(), fieldMeta->len());
@@ -518,6 +517,50 @@ RC Table::update_record(Record &record, const FieldMeta *fieldMeta, int idx, Val
     return rc;
   }
 
+  return rc;
+}
+
+RC Table::update_record(Table *table, Record &record, std::vector<const FieldMeta*> fieldMeta, std::vector<int> idxs, std::vector<Value> &values) {
+  RC     rc = RC::SUCCESS;
+  Record old_record(record);
+  std::vector<Value> old_values;
+  for (auto& field_meta : fieldMeta) {
+    old_values.emplace_back(field_meta->type(), old_record.data() + field_meta->offset(), field_meta->len());
+  }
+
+  rc = delete_entry_of_indexes(old_record.data(), old_record.rid(), true);
+  if (rc != RC::SUCCESS) {
+    //    record_handler_->update_record(fieldMeta->offset(), fieldMeta->len(), idx, old_value, record);
+    insert_entry_of_indexes(old_record.data(), old_record.rid());
+    LOG_ERROR("Update record idx failed. table name=%s, rc=%s", table_meta_.name(), strrc(rc));
+    return rc;
+  }
+
+  for (int i = 0; i < fieldMeta.size(); i++) {
+    auto &field_meta = fieldMeta[i];
+    auto& idx = idxs[i];
+    auto& value = values[i];
+    rc = record_handler_->update_record(field_meta->offset(), field_meta->len(), idx, value, record);
+    if (rc != RC::SUCCESS) {
+//      record_handler_->update_record(field_meta->offset(), field_meta->len(), idx, old_value, record);
+      insert_entry_of_indexes(record.data(), record.rid());
+      LOG_ERROR("Update record failed. table name=%s, rc=%s", table_meta_.name(), strrc(rc));
+      return rc;
+    }
+  }
+
+  rc = insert_entry_of_indexes(record.data(), record.rid());
+  if (rc != RC::SUCCESS) {
+    for (int i = 0; i < fieldMeta.size(); i++) {
+      auto &field_meta = fieldMeta[i];
+      auto& idx = idxs[i];
+      auto& value = old_values[i];
+      rc = record_handler_->update_record(field_meta->offset(), field_meta->len(), idx, value, record);
+    }
+    insert_entry_of_indexes(old_record.data(), old_record.rid());
+    LOG_ERROR("Update record idx failed. table name=%s, rc=%s", table_meta_.name(), strrc(rc));
+    return rc;
+  }
 
   return rc;
 }
