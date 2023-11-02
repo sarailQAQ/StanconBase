@@ -555,7 +555,7 @@ RC Table::update_record(Table *table, Record &record, std::vector<const FieldMet
       auto &field_meta = fieldMeta[i];
       auto& idx = idxs[i];
       auto& value = old_values[i];
-      rc = record_handler_->update_record(field_meta->offset(), field_meta->len(), idx, value, record);
+      record_handler_->update_record(field_meta->offset(), field_meta->len(), idx, value, record);
     }
     insert_entry_of_indexes(old_record.data(), old_record.rid());
     LOG_ERROR("Update record idx failed. table name=%s, rc=%s", table_meta_.name(), strrc(rc));
