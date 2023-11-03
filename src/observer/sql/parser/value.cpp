@@ -215,7 +215,8 @@ int Value::compare(const Value &other) const
 {
   // NULL 和任何值比较都是 false,is null 比较符则另外处理
   if(attr_type_ == AttrType::NULLS){
-    return -1;
+    // 如果都是 null，返回0，否则，null将视为最小值
+    return other.attr_type_ == NULLS ? 0 : -1;
   }
   if (other.attr_type_ == AttrType::NULLS) return 1;
 
