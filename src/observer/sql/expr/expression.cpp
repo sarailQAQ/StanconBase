@@ -87,154 +87,6 @@ RC CastExpr::try_get_value(Value &value) const
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-
-ComparisonExpr::ComparisonExpr(CompOp comp, unique_ptr<Expression> left, unique_ptr<Expression> right)
-{
-  comp_ = comp;
-//  类型相同不用转
-  if(left->value_type() == right->value_type()){
-    left_ = std::move(left);
-    right_ = std::move(right);
-    return;
-  }
-
-  // int、char、日期 遇到浮点 都转浮点
-  if(left->value_type() == AttrType::FLOATS){
-    left_ = std::move(left);
-    right_ = std::unique_ptr<Expression>(new CastExpr(std::move(right),AttrType::FLOATS));
-    return;
-  }
-  if(right->value_type() == AttrType::FLOATS){
-    left_ = std::unique_ptr<Expression>(new CastExpr(std::move(left),AttrType::FLOATS));
-    right_ = std::move(right);
-    return;
-  }
-
-  // 不是浮点 有整形就转整形
-  if(left->value_type() == AttrType::INTS){
-    left_ = std::move(left);
-    right_ = std::unique_ptr<Expression>(new CastExpr(std::move(right),AttrType::INTS));
-    return;
-  }
-  if(right->value_type() == AttrType::INTS){
-    left_ = std::unique_ptr<Expression>(new CastExpr(std::move(left),AttrType::INTS));
-    right_ = std::move(right);
-    return;
-  }
-
-
-  // 匹配不上转换规则，也不转
-  left_ = std::move(left);
-  right_ = std::move(right);
-
-}
-
-ComparisonExpr::~ComparisonExpr()
-{}
-
-RC ComparisonExpr::compare_value(const Value &left, const Value &right, bool &result) const
-{
-  // 如果存在null参与比较，同时比较符不是is null  也不是 is not null 则直接判断为false
-  if((comp_ != IS_NULL && comp_ != NOT_NULL) && (left.attr_type() == NULLS || right.attr_type() == NULLS)){
-    result = false;
-    return  RC::SUCCESS;
-  }
-
-  RC rc = RC::SUCCESS;
-  int cmp_result = left.compare(right);
-  result = false;
-  switch (comp_) {
-    case EQUAL_TO: {
-      result = (0 == cmp_result);
-    } break;
-    case LESS_EQUAL: {
-      result = (cmp_result <= 0);
-    } break;
-    case NOT_EQUAL: {
-      result = (cmp_result != 0);
-    } break;
-    case LESS_THAN: {
-      result = (cmp_result < 0);
-    } break;
-    case GREAT_EQUAL: {
-      result = (cmp_result >= 0);
-    } break;
-    case GREAT_THAN: {
-      result = (cmp_result > 0);
-    } break;
-    //实现LIKE值比较
-    //在LIKE中只有左值匹配右值 'ta%' LIKE 't' -> TURE
-    case LIKE: {
-      result = left.like(right);
-    } break;
-    case NOT_LIKE: {
-      result = !left.like(right);
-    } break;
-    case IS_NULL: {
-      AttrType left_type = left.attr_type();
-      AttrType right_type = right.attr_type();
-      result = left_type == right_type && left_type == NULLS;
-    } break;
-    case NOT_NULL: {
-      AttrType left_type = left.attr_type();
-      AttrType right_type = right.attr_type();
-      result = (left_type == NULLS || right_type == NULLS) && (left_type != NULLS || right_type != NULLS);
-    } break;
-    default: {
-      LOG_WARN("unsupported comparison. %d", comp_);
-      rc = RC::INTERNAL;
-    } break;
-  }
-
-  return rc;
-}
-
-RC ComparisonExpr::try_get_value(Value &cell) const
-{
-  if (left_->type() == ExprType::VALUE && right_->type() == ExprType::VALUE) {
-    ValueExpr *left_value_expr = static_cast<ValueExpr *>(left_.get());
-    ValueExpr *right_value_expr = static_cast<ValueExpr *>(right_.get());
-    const Value &left_cell = left_value_expr->get_value();
-    const Value &right_cell = right_value_expr->get_value();
-
-    bool value = false;
-    RC rc = compare_value(left_cell, right_cell, value);
-    if (rc != RC::SUCCESS) {
-      LOG_WARN("failed to compare tuple cells. rc=%s", strrc(rc));
-    } else {
-      cell.set_boolean(value);
-    }
-    return rc;
-  }
-
-  return RC::INVALID_ARGUMENT;
-}
-
-RC ComparisonExpr::get_value(const Tuple &tuple, Value &value) const
-{
-  Value left_value;
-  Value right_value;
-
-  RC rc = left_->get_value(tuple, left_value);
-  if (rc != RC::SUCCESS) {
-    LOG_WARN("failed to get value of left expression. rc=%s", strrc(rc));
-    return rc;
-  }
-  rc = right_->get_value(tuple, right_value);
-  if (rc != RC::SUCCESS) {
-    LOG_WARN("failed to get value of right expression. rc=%s", strrc(rc));
-    return rc;
-  }
-
-  bool bool_value = false;
-  rc = compare_value(left_value, right_value, bool_value);
-  if (rc == RC::SUCCESS) {
-    value.set_boolean(bool_value);
-  }
-  return rc;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 ConjunctionExpr::ConjunctionExpr(Type type, vector<unique_ptr<Expression>> &children)
     : conjunction_type_(type), children_(std::move(children))
 {}
@@ -250,6 +102,33 @@ RC ConjunctionExpr::get_value(const Tuple &tuple, Value &value) const
   Value tmp_value;
   for (const unique_ptr<Expression> &expr : children_) {
     rc = expr->get_value(tuple, tmp_value);
+    if (rc != RC::SUCCESS) {
+      LOG_WARN("failed to get value by child expression. rc=%s", strrc(rc));
+      return rc;
+    }
+    bool bool_value = tmp_value.get_boolean();
+    if ((conjunction_type_ == Type::AND && !bool_value) || (conjunction_type_ == Type::OR && bool_value)) {
+      value.set_boolean(bool_value);
+      return rc;
+    }
+  }
+
+  bool default_value = (conjunction_type_ == Type::AND);
+  value.set_boolean(default_value);
+  return rc;
+}
+
+RC ConjunctionExpr::get_value(Trx *trx, const Tuple &tuple, Value &value)
+{
+  RC rc = RC::SUCCESS;
+  if (children_.empty()) {
+    value.set_boolean(true);
+    return rc;
+  }
+
+  Value tmp_value;
+  for (const unique_ptr<Expression> &expr : children_) {
+    rc = expr->get_value(trx, tuple, tmp_value);
     if (rc != RC::SUCCESS) {
       LOG_WARN("failed to get value by child expression. rc=%s", strrc(rc));
       return rc;
@@ -286,7 +165,7 @@ AttrType ArithmeticExpr::value_type() const
       arithmetic_type_ != Type::DIV) {
     return AttrType::INTS;
   }
-  
+
   return AttrType::FLOATS;
 }
 

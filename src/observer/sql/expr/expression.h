@@ -33,7 +33,7 @@ class Tuple;
  * @brief 表达式类型
  * @ingroup Expression
  */
-enum class ExprType 
+enum class ExprType
 {
   NONE,
   STAR,         ///< 星号，表示所有字段
@@ -43,6 +43,8 @@ enum class ExprType
   COMPARISON,   ///< 需要做比较的表达式
   CONJUNCTION,  ///< 多个表达式使用同一种关系(AND或OR)来联结
   ARITHMETIC,   ///< 算术运算
+  SUB_QUERY,   ///< 子查询运算
+  VALUE_LIST,   ///< 子查询运算
 };
 
 /**
@@ -56,7 +58,7 @@ enum class ExprType
  * 才能计算出来真实的值。但是有些表达式可能就表示某一个固定的
  * 值，比如ValueExpr。
  */
-class Expression 
+class Expression
 {
 public:
   Expression() = default;
@@ -66,6 +68,11 @@ public:
    * @brief 根据具体的tuple，来计算当前表达式的值。tuple有可能是一个具体某个表的行数据
    */
   virtual RC get_value(const Tuple &tuple, Value &value) const = 0;
+
+  /**
+   * @brief 带事务，主要用于子查询表达式
+   */
+  virtual RC get_value(Trx *trx, const Tuple &tuple, Value &value) = 0;
 
   /**
    * @brief 在没有实际运行的情况下，也就是无法获取tuple的情况下，尝试获取表达式的值
@@ -102,7 +109,7 @@ private:
  * @brief 字段表达式
  * @ingroup Expression
  */
-class FieldExpr : public Expression 
+class FieldExpr : public Expression
 {
 public:
   FieldExpr() = default;
@@ -125,6 +132,7 @@ public:
   const char *field_name() const { return field_.field_name(); }
 
   RC get_value(const Tuple &tuple, Value &value) const override;
+  RC get_value(Trx *trx, const Tuple &tuple, Value &value) override {return get_value(tuple,value);}
 
 private:
   Field field_;
@@ -134,7 +142,7 @@ private:
  * @brief 常量值表达式
  * @ingroup Expression
  */
-class ValueExpr : public Expression 
+class ValueExpr : public Expression
 {
 public:
   ValueExpr() = default;
@@ -144,6 +152,7 @@ public:
   virtual ~ValueExpr() = default;
 
   RC get_value(const Tuple &tuple, Value &value) const override;
+  RC get_value(Trx *trx, const Tuple &tuple, Value &value) override {return get_value(tuple,value);}
   RC try_get_value(Value &value) const override { value = value_; return RC::SUCCESS; }
 
   ExprType type() const override { return ExprType::VALUE; }
@@ -162,7 +171,7 @@ private:
  * @brief 类型转换表达式
  * @ingroup Expression
  */
-class CastExpr : public Expression 
+class CastExpr : public Expression
 {
 public:
   CastExpr(std::unique_ptr<Expression> child, AttrType cast_type);
@@ -173,7 +182,7 @@ public:
     return ExprType::CAST;
   }
   RC get_value(const Tuple &tuple, Value &value) const override;
-
+  RC get_value(Trx *trx, const Tuple &tuple, Value &value) override {return get_value(tuple,value);}
   RC try_get_value(Value &value) const override;
 
   AttrType value_type() const override { return cast_type_; }
@@ -189,52 +198,12 @@ private:
 };
 
 /**
- * @brief 比较表达式
- * @ingroup Expression
- */
-class ComparisonExpr : public Expression 
-{
-public:
-  // 创建比较表达式的时候判断两者类型，如果类型不同需要封装一层类型转换表达式，以实现动态转换
-  ComparisonExpr(CompOp comp, std::unique_ptr<Expression> left, std::unique_ptr<Expression> right);
-  virtual ~ComparisonExpr();
-
-  ExprType type() const override { return ExprType::COMPARISON; }
-
-  RC get_value(const Tuple &tuple, Value &value) const override;
-
-  AttrType value_type() const override { return BOOLEANS; }
-
-  CompOp comp() const { return comp_; }
-
-  std::unique_ptr<Expression> &left()  { return left_;  }
-  std::unique_ptr<Expression> &right() { return right_; }
-
-  /**
-   * 尝试在没有tuple的情况下获取当前表达式的值
-   * 在优化的时候，可能会使用到
-   */
-  RC try_get_value(Value &value) const override;
-
-  /**
-   * compare the two tuple cells
-   * @param value the result of comparison
-   */
-  RC compare_value(const Value &left, const Value &right, bool &value) const;
-
-private:
-  CompOp comp_;
-  std::unique_ptr<Expression> left_;
-  std::unique_ptr<Expression> right_;
-};
-
-/**
  * @brief 联结表达式
  * @ingroup Expression
  * 多个表达式使用同一种关系(AND或OR)来联结
  * 当前miniob仅有AND操作
  */
-class ConjunctionExpr : public Expression 
+class ConjunctionExpr : public Expression
 {
 public:
   enum class Type {
@@ -251,6 +220,7 @@ public:
   AttrType value_type() const override { return BOOLEANS; }
 
   RC get_value(const Tuple &tuple, Value &value) const override;
+  RC get_value(Trx *trx, const Tuple &tuple, Value &value) override;
 
   Type conjunction_type() const { return conjunction_type_; }
 
@@ -265,7 +235,7 @@ private:
  * @brief 算术表达式
  * @ingroup Expression
  */
-class ArithmeticExpr : public Expression 
+class ArithmeticExpr : public Expression
 {
 public:
   enum class Type {
@@ -286,6 +256,7 @@ public:
   AttrType value_type() const override;
 
   RC get_value(const Tuple &tuple, Value &value) const override;
+  RC get_value(Trx *trx, const Tuple &tuple, Value &value) override {return get_value(tuple,value);}
   RC try_get_value(Value &value) const override;
 
   Type arithmetic_type() const { return arithmetic_type_; }
@@ -295,7 +266,7 @@ public:
 
 private:
   RC calc_value(const Value &left_value, const Value &right_value, Value &value) const;
-  
+
 private:
   Type arithmetic_type_;
   std::unique_ptr<Expression> left_;

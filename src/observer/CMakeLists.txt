@@ -9,7 +9,11 @@ FOREACH (F ${ALL_SRC})
 
     IF (NOT ${F} STREQUAL ${MAIN_SRC})
         SET(LIB_SRC ${LIB_SRC} ${F}
-                common/date.h)
+                common/date.h
+                sql/expr/sub_query_expression.cpp
+                sql/expr/sub_query_expression.h
+                sql/expr/comparison_expression.cpp
+                sql/expr/comparison_expression.h)
     ENDIF()
 
     MESSAGE("Use " ${F})

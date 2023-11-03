@@ -40,6 +40,7 @@ See the Mulan PSL v2 for more details. */
 #include "sql/expr/expression.h"
 #include "storage/index/index.h"
 #include "common/log/log.h"
+#include "sql/expr/comparison_expression.h"
 
 using namespace std;
 

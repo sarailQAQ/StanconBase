@@ -16,6 +16,7 @@ See the Mulan PSL v2 for more details. */
 #include "sql/optimizer/comparison_simplification_rule.h"
 #include "sql/optimizer/conjunction_simplification_rule.h"
 #include "common/log/log.h"
+#include "sql/expr/comparison_expression.h"
 
 ExpressionRewriter::ExpressionRewriter()
 {
