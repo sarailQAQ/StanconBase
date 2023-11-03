@@ -61,7 +61,7 @@ RC ShowIndexExecutor::execute(SQLStageEvent *sql_event)
 
   auto             oper       = new StringListPhysicalOperator;
   const TableMeta &table_meta = table->table_meta();
-  for (int i = table_meta.sys_field_num(); i < table_meta.index_num(); i++) {
+  for (int i = 0; i < table_meta.index_num(); i++) {
     const auto *index_meta = table_meta.index(i);
     for (int j = 0; j < index_meta->fields().size(); j++) {
       oper->append({table_name, to_string(index_meta->is_unique() ? 0 : 1), index_meta->name(), to_string(j +1), index_meta->fields()[j]});
