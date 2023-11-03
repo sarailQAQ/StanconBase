@@ -207,14 +207,16 @@ RC MvccTrx::update_record(Table *table, Record &record, std::vector<const FieldM
   begin_field.set_int(record, -trx_id_);
   end_field.set_int(record, trx_kit_.max_trx_id());
 
+  delete_record(table, record);
+
   for (int i = 0; i < fieldMeta.size(); i++) {
     auto &field_meta = fieldMeta[i];
     auto& value = values[i];
     memmove(record.data()+field_meta->offset(), value.data(), field_meta->len());
   }
-  RC rc = table->insert_record(record);
+  table->insert_record(record);
 
-  return rc;
+  return RC::SUCCESS;
 }
 
 RC MvccTrx::visit_record(Table *table, Record &record, bool readonly)
