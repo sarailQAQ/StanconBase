@@ -214,9 +214,10 @@ std::string Value::to_string() const
 int Value::compare(const Value &other) const
 {
   // NULL 和任何值比较都是 false,is null 比较符则另外处理
-  if(attr_type_ == AttrType::NULLS || other.attr_type_ == AttrType::NULLS){
+  if(attr_type_ == AttrType::NULLS){
     return -1;
   }
+  if (other.attr_type_ == AttrType::NULLS) return 1;
 
   if (this->attr_type_ == other.attr_type_) {
     switch (this->attr_type_) {
