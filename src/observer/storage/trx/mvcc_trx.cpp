@@ -198,7 +198,7 @@ RC MvccTrx::update_record(Table *table, Record &record, const FieldMeta* fieldMe
   return rc;
 }
 
-RC MvccTrx::update_record(Table *table, Record &record, std::vector<const FieldMeta* >fieldMeta, std::vector<int> index, std::vector<Value> &value) {
+RC MvccTrx::update_record(Table *table, Record &record, std::vector<const FieldMeta* >fieldMeta, std::vector<int> idxs, std::vector<Value> &values) {
   std::cerr << "okokok" << std::endl;
   Field begin_field;
   Field end_field;
@@ -207,7 +207,12 @@ RC MvccTrx::update_record(Table *table, Record &record, std::vector<const FieldM
   begin_field.set_int(record, -trx_id_);
   end_field.set_int(record, trx_kit_.max_trx_id());
 
-  RC rc = table->update_record(table, record, fieldMeta, index, value);
+  for (int i = 0; i < fieldMeta.size(); i++) {
+    auto &field_meta = fieldMeta[i];
+    auto& value = values[i];
+    memmove(record.data()+field_meta->offset(), value.data(), field_meta->len());
+  }
+  RC rc = table->insert_record(record);
 
   return rc;
 }
