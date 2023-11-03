@@ -33,9 +33,10 @@ RC OrderByPhysicalOperator::open(Trx *trx)
     LOG_WARN("order by 子算子开启失败");
     return rc;
   }
+  tuple_cache_.reserve(2048);
   while (RC::SUCCESS == (children_[0]->next())) {
     auto temp = children_[0]->current_tuple();
-    tuple_cache_.emplace_back(std::move(temp->clone()));
+    tuple_cache_.emplace_back(temp->clone());
   }
   rc                   = children_[0]->close();
   auto &expressions    = expressions_;
@@ -77,6 +78,9 @@ RC OrderByPhysicalOperator::next()
   return RC::SUCCESS;
 }
 
-RC OrderByPhysicalOperator::close() { return RC::SUCCESS; }
+RC OrderByPhysicalOperator::close() {
+  tuple_cache_.clear();
+  return RC::SUCCESS;
+}
 
 Tuple *OrderByPhysicalOperator::current_tuple() { return tuple_; }
