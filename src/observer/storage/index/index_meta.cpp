@@ -38,6 +38,7 @@ RC IndexMeta::init(const char *name, const std::vector<const FieldMeta *> &field
     if (!fields_str.empty()) fields_str += ","; // 多个列名用 , 分割
     fields_str += field_meta->name();
   }
+  is_unique_ = unique;
   return RC::SUCCESS;
 }
 

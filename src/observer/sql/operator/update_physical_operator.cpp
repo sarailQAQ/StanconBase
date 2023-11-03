@@ -86,6 +86,7 @@ RC UpdatePhysicalOperator::next()
     }
 
 //    int offset = field_meta->offset();
+
     rc = trx_->update_record(table_, record, field_metas, idxs, values_);
 //    rc = trx_->update_record(table_, record, values_, offset);
     if (rc != RC::SUCCESS) {
