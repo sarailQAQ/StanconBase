@@ -213,28 +213,22 @@ RC MvccTrx::update_record(Table *table, Record &record, std::vector<const FieldM
   }
   if (is_same) return RC::SUCCESS;
 
-  if (table->table_meta().field_metas()->size() <= 2) return RC::INTERNAL;
-  auto& t = *trx_kit_.trx_fields();
-  int offset = t[1].offset() + t[1].len();
-
-  int len = 0;
-  for (auto& field_meta : *table->table_meta().field_metas()) {
-    len += field_meta.len();
-  }
+  int len = table->table_meta().record_size();
 
   char *data = (char *)malloc(record.len());
   memmove(data, record.data(), record.len());
   old_rec.set_data_owner(data, len, record.bitmap_len());
+  old_rec.set_rid({-1,-1});
+
   delete_record(table, record);
 
-  record.set_rid({-1,-1});
   for (int i = 0; i < fieldMeta.size(); i++) {
     auto &field_meta = fieldMeta[i];
     auto& value = values[i];
 
-    memmove(record.data()+field_meta->offset(), value.data(), field_meta->len());
+    memmove(old_rec.data()+field_meta->offset(), value.data(), field_meta->len());
   }
-  return insert_record(table, record);
+  return insert_record(table, old_rec);
 }
 
 RC MvccTrx::visit_record(Table *table, Record &record, bool readonly)
