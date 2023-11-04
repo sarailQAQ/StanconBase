@@ -174,7 +174,8 @@ RC MvccTrx::delete_record(Table * table, Record &record)
     // 当前不是多版本数据中的最新记录，不需要删除
     return RC::SUCCESS;
   }
-  
+
+  table->delete_entry_of_indexes(record.data(), record.rid(), true);
   end_field.set_int(record, -trx_id_);
   RC rc = log_manager_->append_log(CLogType::DELETE, trx_id_, table->table_id(), record.rid(), 0, 0, nullptr);
   ASSERT(rc == RC::SUCCESS, "failed to append delete record log. trx id=%d, table id=%d, rid=%s, record len=%d, rc=%s",
@@ -224,7 +225,6 @@ RC MvccTrx::update_record(Table *table, Record &record, std::vector<const FieldM
   old_rec.set_data_owner(data, len, bitmap_len);
   old_rec.set_rid({-1,-1});
 
-  table->delete_entry_of_indexes(record.data(), record.rid(), true);
   delete_record(table, record);
 
   bitmap = common::Bitmap(old_rec.data(), bitmap_len);
@@ -358,7 +358,7 @@ RC MvccTrx::commit_with_trx_id(int32_t commit_xid)
                  "got an invalid record while committing. end xid=%d, this trx id=%d", 
                  end_xid_field.get_int(record), trx_id_);
                 
-          end_xid_field.set_int(record, commit_xid);
+          end_xid_field.set_int(record, commit_xid-1);
         };
 
         rc = operation.table()->visit_record(rid, false/*readonly*/, record_updater);
