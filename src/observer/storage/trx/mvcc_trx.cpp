@@ -224,8 +224,10 @@ RC MvccTrx::update_record(Table *table, Record &record, std::vector<const FieldM
   old_rec.set_data_owner(data, len, bitmap_len);
   old_rec.set_rid({-1,-1});
 
+  table->delete_entry_of_indexes(record.data(), record.rid(), true);
   delete_record(table, record);
 
+  bitmap = common::Bitmap(old_rec.data(), bitmap_len);
   for (int i = 0; i < fieldMeta.size(); i++) {
     auto &field_meta = fieldMeta[i];
     auto& idx = idxs[i];
