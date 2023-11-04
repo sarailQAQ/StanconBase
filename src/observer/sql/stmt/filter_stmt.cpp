@@ -91,7 +91,7 @@ RC FilterStmt::create_filter_unit(Db *db, Table *default_table, std::unordered_m
 
   filter_unit = new FilterUnit;
 
-  if (condition.left_is_attr) {
+  if (condition.left_type == ATTR) {
     Table *table = nullptr;
     const FieldMeta *field = nullptr;
     rc = get_table_and_field(db, default_table, tables, condition.left_attr, table, field);
@@ -108,21 +108,36 @@ RC FilterStmt::create_filter_unit(Db *db, Table *default_table, std::unordered_m
     filter_unit->set_left(filter_obj);
   }
 
-  if (condition.right_is_attr) {
-    Table *table = nullptr;
-    const FieldMeta *field = nullptr;
-    rc = get_table_and_field(db, default_table, tables, condition.right_attr, table, field);
-    if (rc != RC::SUCCESS) {
-      LOG_WARN("cannot find attr");
-      return rc;
-    }
-    FilterObj filter_obj;
-    filter_obj.init_attr(Field(table, field));
-    filter_unit->set_right(filter_obj);
-  } else {
-    FilterObj filter_obj;
-    filter_obj.init_value(condition.right_value);
-    filter_unit->set_right(filter_obj);
+  switch (condition.right_type) {
+    case ATTR:{
+      Table *table = nullptr;
+      const FieldMeta *field = nullptr;
+      rc = get_table_and_field(db, default_table, tables, condition.right_attr, table, field);
+      if (rc != RC::SUCCESS) {
+        LOG_WARN("cannot find attr");
+        return rc;
+      }
+      FilterObj filter_obj;
+      filter_obj.init_attr(Field(table, field));
+      filter_unit->set_right(filter_obj);
+    } break;
+    case VALUE:{
+      FilterObj filter_obj;
+      filter_obj.init_value(condition.right_value);
+      filter_unit->set_right(filter_obj);
+    } break;
+    case VALUE_LIST:{
+      FilterObj filter_obj;
+      filter_obj.init_value_list(condition.right_values);
+      filter_unit->set_right(filter_obj);
+    } break;
+    case SUB_QUERY:{
+      FilterObj filter_obj;
+      Stmt *stmt;
+      SelectStmt::create(db,condition.right_sub_selection->selection,stmt);
+      filter_obj.init_sub_query(static_cast<SelectStmt*>(stmt));
+      filter_unit->set_right(filter_obj);
+    } break;
   }
 
   filter_unit->set_comp(comp);
@@ -130,7 +145,7 @@ RC FilterStmt::create_filter_unit(Db *db, Table *default_table, std::unordered_m
   // TODO 检查两个类型是否能够比较
 
   // 日期类型特殊处理
-  if(condition.left_is_attr && filter_unit->left().field.attr_type() == DATES && condition.right_value.attr_type() == CHARS){
+  if(condition.left_type == ATTR && filter_unit->left().field.attr_type() == DATES && condition.right_value.attr_type() == CHARS){
     FilterObj filter_obj;
     int date_num = -1;
     RC rc = string_to_date(condition.right_value.data(),date_num);
@@ -143,7 +158,7 @@ RC FilterStmt::create_filter_unit(Db *db, Table *default_table, std::unordered_m
     filter_obj.init_value(date_value);
     filter_unit->set_right(filter_obj);
   }
-  if(condition.right_is_attr && filter_unit->right().field.attr_type() == DATES && condition.left_value.attr_type() == CHARS){
+  if(condition.right_type == ATTR && filter_unit->right().field.attr_type() == DATES && condition.left_value.attr_type() == CHARS){
     FilterObj filter_obj;
     int date_num = -1;
     RC rc = string_to_date(condition.left_value.data(),date_num);

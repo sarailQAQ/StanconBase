@@ -102,19 +102,30 @@ struct OrderByItem
   OrderByType    order_type = OrderByType::SORT_ASC;  // 排序方式 默认升序
 };
 
+enum FieldObjType {
+  ATTR,
+  VALUE,
+  VALUE_LIST,
+  SUB_QUERY,
+  NULL_TYPE, // 左值为NULL_TYPE 右边必须为子查询 ，比较符为 （not）exists
+};
+
 struct ConditionSqlNode
 {
-  int             left_is_attr;    ///< TRUE if left-hand side is an attribute
-                                   ///< 1时，操作符左边是属性名，0时，是属性值
+  FieldObjType             left_type;    ///< 左值类型，属性、值、列表、子查询
+
   Value           left_value;      ///< left-hand side value if left_is_attr = FALSE
   RelAttrSqlNode  left_attr;       ///< left-hand side attribute
+//  std::vector<Value> left_values; // 左值暂时不允许放列表和子查询
+//  ParsedSqlNode* left_sub_selection;
+
   CompOp          comp;            ///< comparison operator
-  int             right_is_attr;   ///< TRUE if right-hand side is an attribute
-                                   ///< 1时，操作符右边是属性名，0时，是属性值
+
+  FieldObjType             right_type;   ///< 右值类型，属性、值、列表、子查询
   RelAttrSqlNode  right_attr;      ///< right-hand side attribute if right_is_attr = TRUE 右边的属性
   Value           right_value;     ///< right-hand side value if right_is_attr = FALSE
-  std::vector<Value> values;
-  ParsedSqlNode* sub_selection;
+  std::vector<Value> right_values;
+  ParsedSqlNode* right_sub_selection;
 
 };
 

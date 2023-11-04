@@ -35,6 +35,7 @@ See the Mulan PSL v2 for more details. */
 #include "sql/stmt/explain_stmt.h"
 #include "sql/operator/order_by_logical_operator.h"
 #include "sql/expr/comparison_expression.h"
+#include "sql/expr/sub_query_expression.h"
 
 using namespace std;
 
@@ -208,13 +209,38 @@ RC LogicalPlanGenerator::create_expr(FilterStmt *filter_stmt, unique_ptr<Conjunc
     const FilterObj &filter_obj_left  = filter_unit->left();
     const FilterObj &filter_obj_right = filter_unit->right();
     // 创建左右表达式
-    unique_ptr<Expression> left(filter_obj_left.is_attr
+
+    // TODO 左值暂时不支持 列表和子查询
+    unique_ptr<Expression> left(filter_obj_left.type == ATTR
                                     ? static_cast<Expression *>(new FieldExpr(filter_obj_left.field))
                                     : static_cast<Expression *>(new ValueExpr(filter_obj_left.value)));
 
-    unique_ptr<Expression> right(filter_obj_right.is_attr
-                                     ? static_cast<Expression *>(new FieldExpr(filter_obj_right.field))
-                                     : static_cast<Expression *>(new ValueExpr(filter_obj_right.value)));
+    Expression *right_expr;
+    switch (filter_obj_right.type) {
+      case VALUE:{
+        right_expr = static_cast<Expression *>(new ValueExpr(filter_obj_right.value));
+      } break;
+      case ATTR:{
+        right_expr = static_cast<Expression *>(new ValueExpr(filter_obj_right.value));
+      } break;
+      case VALUE_LIST:{
+        right_expr = static_cast<Expression *>(new SubQueryExpr(filter_obj_right.value_list));
+      } break;
+      case SUB_QUERY:{
+        unique_ptr<LogicalOperator> sub_logical_operator;
+        create_plan(filter_obj_right.sub_query,sub_logical_operator);
+//        sub_logical_operator -> rewriter -> sub_physical_operator
+        // TODO create physical oper, 会有循环依赖。。。
+//      filter_obj_right.sub_query
+//        right_expr = static_cast<Expression *>(new SubQueryExpr(nullptr));
+      } break;
+      default:{
+        LOG_WARN("not support filter_obj type");
+        return RC::INVALID_ARGUMENT;
+      }
+    }
+
+    unique_ptr<Expression> right(right_expr);
 
     ComparisonExpr *cmp_expr = new ComparisonExpr(filter_unit->comp(), std::move(left), std::move(right));
     cmp_exprs.emplace_back(cmp_expr);

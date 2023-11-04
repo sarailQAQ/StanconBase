@@ -19,27 +19,42 @@ See the Mulan PSL v2 for more details. */
 #include "sql/parser/parse_defs.h"
 #include "sql/stmt/stmt.h"
 #include "sql/expr/expression.h"
+#include "select_stmt.h"
 
 class Db;
 class Table;
 class FieldMeta;
 
-struct FilterObj 
+struct FilterObj
 {
-  bool is_attr;
+  FieldObjType type;
   Field field;
   Value value;
+  std::vector<Value> value_list;
+  SelectStmt *sub_query;
 
   void init_attr(const Field &field)
   {
-    is_attr = true;
+    type = ATTR;
     this->field = field;
   }
 
   void init_value(const Value &value)
   {
-    is_attr = false;
+    type = VALUE;
     this->value = value;
+  }
+
+  void init_value_list(const std::vector<Value> &value_list)
+  {
+    type = VALUE;
+    this->value_list = value_list;
+  }
+
+  void init_sub_query(SelectStmt *sub_query)
+  {
+    type = SUB_QUERY;
+    this->sub_query = sub_query;
   }
 };
 

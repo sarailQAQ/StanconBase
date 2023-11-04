@@ -3,7 +3,8 @@
 //
 
 #include "expression.h"
-#include "sql/operator/project_physical_operator.h"
+//#include "sql/operator/project_physical_operator.h"
+//class ProjectPhysicalOperator;
 /**
  * @brief 子查询表达式,子查询依赖算子，为了避免循环依赖，就把子查询表达式独立出来了
  * @ingroup Expression
@@ -11,9 +12,10 @@
 class SubQueryExpr : public Expression
 {
 public:
-  SubQueryExpr( ProjectPhysicalOperator *sub_opt):sub_opt_(sub_opt){}
+//  SubQueryExpr(ProjectPhysicalOperator *sub_opt) : sub_opt_(sub_opt) {}
 
-  virtual ~SubQueryExpr() = default;
+  SubQueryExpr(const std::vector<Value> values) : values_(values) { cached_ = true; };
+  ~SubQueryExpr() = default;
 
   ExprType type() const override { return ExprType::SUB_QUERY; }
 
@@ -25,13 +27,13 @@ public:
   // 如果子查询是一个数值列表，则直接在这里返回
   RC try_get_value(Value &value) const override;
 
-  void reset(){ cur_index_ =0;}
-  void set_cached(){cached_=true;}
+  void reset() { cur_index_ = 0; }
+  void set_cached() { cached_ = true; }
 
 private:
   // 子查询算子
-  ProjectPhysicalOperator *sub_opt_;
-  bool cached_ = false; // 子查询是否已经执行完毕
+//  ProjectPhysicalOperator *sub_opt_;
+  bool                     cached_    = false;  // 子查询是否已经执行完毕
   int                      cur_index_ = 0;
-  std::vector<Value> values_;
+  std::vector<Value>       values_; // in列表或者子查询的结果存在这里
 };

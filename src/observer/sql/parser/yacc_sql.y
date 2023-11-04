@@ -157,7 +157,6 @@ ArithmeticExpr *create_arithmetic_expression(ArithmeticExpr::Type type,
 %type <number>              number
 %type <comp>                sub_comp_op
 %type <comp>                comp_op
-%type <comp>                in
 %type <comp>                exists
 %type <rel_attr>            rel_attr
 %type <order_by_item_list>  order_by_item_list
@@ -810,31 +809,31 @@ condition_list:
     }
     ;
 condition:
-    value in LBRACE value value_list RBRACE
+    value sub_comp_op LBRACE value value_list RBRACE
     {
       $$ = new ConditionSqlNode;
-      $$->left_is_attr = 0;
+      $$->left_type = VALUE;
       $$->left_value = *$1;
-      $$->right_is_attr = 0;
+      $$->right_type = VALUE_LIST;
       if ($5 != nullptr) {
-        $$->values.swap(*$5);
+        $$->right_values.swap(*$5);
       }
-      $$->values.emplace_back(*$4);
+      $$->right_values.emplace_back(*$4);
       $$->comp = $2;
 
       delete $1;
       delete $4;
     }
-    | rel_attr in LBRACE value value_list RBRACE
+    | rel_attr sub_comp_op LBRACE value value_list RBRACE
     {
       $$ = new ConditionSqlNode;
-      $$->left_is_attr = 1;
+      $$->left_type = ATTR;
       $$->left_attr = *$1;
-      $$->right_is_attr = 0;
+      $$->right_type = VALUE_LIST;
       if ($5 != nullptr) {
-        $$->values.swap(*$5);
+        $$->right_values.swap(*$5);
       }
-      $$->values.emplace_back(*$4);
+      $$->right_values.emplace_back(*$4);
       $$->comp = $2;
 
       delete $1;
@@ -843,10 +842,10 @@ condition:
     | rel_attr sub_comp_op LBRACE select_stmt RBRACE
       {
         $$ = new ConditionSqlNode;
-        $$->left_is_attr = 1;
+        $$->left_type = ATTR;
         $$->left_attr = *$1;
-        $$->right_is_attr = 0;
-        $$->sub_selection = $4;
+        $$->right_type = SUB_QUERY;
+        $$->right_sub_selection = $4;
         $$->comp = $2;
 
         delete $1;
@@ -855,10 +854,10 @@ condition:
     | value sub_comp_op LBRACE select_stmt RBRACE
       {
         $$ = new ConditionSqlNode;
-        $$->left_is_attr = 0;
+        $$->left_type = VALUE;
         $$->left_value = *$1;
-        $$->right_is_attr = 0;
-        $$->sub_selection = $4;
+        $$->right_type = SUB_QUERY;
+        $$->right_sub_selection = $4;
         $$->comp = $2;
 
         delete $1;
@@ -867,9 +866,9 @@ condition:
     | exists LBRACE select_stmt RBRACE
     {
       $$ = new ConditionSqlNode;
-      $$->left_is_attr = 0;
-      $$->right_is_attr = 0;
-      $$->sub_selection = $3;
+      $$->left_type = NULL_TYPE;
+      $$->right_type = SUB_QUERY;
+      $$->right_sub_selection = $3;
       $$->comp = $1;
 
       delete $3;
@@ -877,9 +876,9 @@ condition:
     | rel_attr comp_op value
     {
       $$ = new ConditionSqlNode;
-      $$->left_is_attr = 1;
+      $$->left_type = ATTR;
       $$->left_attr = *$1;
-      $$->right_is_attr = 0;
+      $$->right_type = VALUE;
       $$->right_value = *$3;
       $$->comp = $2;
 
@@ -889,9 +888,9 @@ condition:
     | value comp_op value
     {
       $$ = new ConditionSqlNode;
-      $$->left_is_attr = 0;
+      $$->left_type = VALUE;
       $$->left_value = *$1;
-      $$->right_is_attr = 0;
+      $$->right_type = VALUE;
       $$->right_value = *$3;
       $$->comp = $2;
 
@@ -901,9 +900,9 @@ condition:
     | rel_attr comp_op rel_attr
     {
       $$ = new ConditionSqlNode;
-      $$->left_is_attr = 1;
+      $$->left_type = ATTR;
       $$->left_attr = *$1;
-      $$->right_is_attr = 1;
+      $$->right_type = ATTR;
       $$->right_attr = *$3;
       $$->comp = $2;
 
@@ -913,9 +912,9 @@ condition:
     | value comp_op rel_attr
     {
       $$ = new ConditionSqlNode;
-      $$->left_is_attr = 0;
+      $$->left_type = VALUE;
       $$->left_value = *$1;
-      $$->right_is_attr = 1;
+      $$->right_type = ATTR;
       $$->right_attr = *$3;
       $$->comp = $2;
 
@@ -948,10 +947,7 @@ comp_op:
     | IS {$$ = IS_NULL;}
     | IS NOT {$$ = NOT_NULL;}
     ;
-in:
-     IN_T {$$ = IN;}
-     | NOT IN_T {$$ = NOT_IN;}
-;
+
 exists:
       EXISTS_T {$$ = EXISTS;}
     | NOT EXISTS_T {$$ = NOT_EXISTS;}
