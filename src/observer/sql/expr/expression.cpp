@@ -15,6 +15,8 @@ See the Mulan PSL v2 for more details. */
 #include "sql/expr/expression.h"
 #include "sql/expr/tuple.h"
 
+#include "sql/operator/project_physical_operator.h"
+
 using namespace std;
 
 RC FieldExpr::get_value(const Tuple &tuple, Value &value) const
@@ -69,6 +71,16 @@ RC CastExpr::cast(const Value &value, Value &cast_value) const
 RC CastExpr::get_value(const Tuple &tuple, Value &cell) const
 {
   RC rc = child_->get_value(tuple, cell);
+  if (rc != RC::SUCCESS) {
+    return rc;
+  }
+
+  return cast(cell, cell);
+}
+
+RC CastExpr::get_value(Trx *trx, const Tuple &tuple, Value &cell)
+{
+  RC rc = child_->get_value(trx, tuple, cell);
   if (rc != RC::SUCCESS) {
     return rc;
   }
@@ -277,3 +289,35 @@ RC ArithmeticExpr::try_get_value(Value &value) const
 
   return calc_value(left_value, right_value, value);
 }
+
+RC SubQueryExpr::get_value(Trx *trx, const Tuple &tuple, Value &value)
+{
+  RC rc = RC::SUCCESS;
+  // 第一次执行缓存记录
+  if (!cached_) {
+    sub_opt_->get()->open(trx);
+    while ((rc = sub_opt_->get()->next()) != RC::RECORD_EOF) {
+      auto  tmp_tuple = sub_opt_->get()->current_tuple();
+      Value tmp_value;
+      tmp_tuple->cell_at(0, tmp_value);  // 只要第一个
+      values_.emplace_back(tmp_value);
+    }
+    sub_opt_->get()->close();
+    set_cached();
+    reset();
+
+    if(rc != RC::RECORD_EOF){
+      LOG_WARN("failed to get value of SubQueryExpr. rc=%s", strrc(rc));
+      return rc;
+    }
+  }
+
+  if (cur_index_ < values_.size()) {
+    value = values_[cur_index_++];
+    return RC::SUCCESS;
+  }
+  reset();
+  return RC::RECORD_EOF;
+}
+
+RC       SubQueryExpr::try_get_value(Value &value) const { return RC::UNIMPLENMENT; }

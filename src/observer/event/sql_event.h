@@ -29,6 +29,9 @@ class ParsedSqlNode;
 class SQLStageEvent : public common::StageEvent
 {
 public:
+  SQLStageEvent(Stmt *stmt){
+      set_stmt(stmt);
+  }
   SQLStageEvent(SessionEvent *event, const std::string &sql);
   virtual ~SQLStageEvent() noexcept;
 

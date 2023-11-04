@@ -47,7 +47,7 @@ struct FilterObj
 
   void init_value_list(const std::vector<Value> &value_list)
   {
-    type = VALUE;
+    type = VALUE_LIST;
     this->value_list = value_list;
   }
 

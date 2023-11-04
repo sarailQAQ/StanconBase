@@ -13,6 +13,8 @@ See the Mulan PSL v2 for more details. */
 //
 
 #include "sql/optimizer/logical_plan_generator.h"
+#include "optimize_stage.h"
+#include "event/sql_event.h"
 
 #include "sql/operator/logical_operator.h"
 #include "sql/operator/calc_logical_operator.h"
@@ -35,7 +37,8 @@ See the Mulan PSL v2 for more details. */
 #include "sql/stmt/explain_stmt.h"
 #include "sql/operator/order_by_logical_operator.h"
 #include "sql/expr/comparison_expression.h"
-#include "sql/expr/sub_query_expression.h"
+#include "sql/expr/expression.h"
+
 
 using namespace std;
 
@@ -210,7 +213,7 @@ RC LogicalPlanGenerator::create_expr(FilterStmt *filter_stmt, unique_ptr<Conjunc
     const FilterObj &filter_obj_right = filter_unit->right();
     // 创建左右表达式
 
-    // TODO 左值暂时不支持 列表和子查询
+    // 左值暂时不支持 列表和子查询
     unique_ptr<Expression> left(filter_obj_left.type == ATTR
                                     ? static_cast<Expression *>(new FieldExpr(filter_obj_left.field))
                                     : static_cast<Expression *>(new ValueExpr(filter_obj_left.value)));
@@ -227,12 +230,11 @@ RC LogicalPlanGenerator::create_expr(FilterStmt *filter_stmt, unique_ptr<Conjunc
         right_expr = static_cast<Expression *>(new SubQueryExpr(filter_obj_right.value_list));
       } break;
       case SUB_QUERY:{
-        unique_ptr<LogicalOperator> sub_logical_operator;
-        create_plan(filter_obj_right.sub_query,sub_logical_operator);
-//        sub_logical_operator -> rewriter -> sub_physical_operator
-        // TODO create physical oper, 会有循环依赖。。。
-//      filter_obj_right.sub_query
-//        right_expr = static_cast<Expression *>(new SubQueryExpr(nullptr));
+        // fake_event 模拟查询stmt 构造物理算子的过程
+        OptimizeStage optimize_stage;
+        auto fake_event = new SQLStageEvent(filter_obj_right.sub_query);
+        optimize_stage.handle_request(fake_event);
+        right_expr = static_cast<Expression *>(new SubQueryExpr(&fake_event->physical_operator()));
       } break;
       default:{
         LOG_WARN("not support filter_obj type");

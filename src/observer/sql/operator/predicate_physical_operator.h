@@ -45,4 +45,5 @@ public:
 
 private:
   std::unique_ptr<Expression> expression_;
+  Trx *                                    trx_ = nullptr;
 };

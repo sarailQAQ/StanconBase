@@ -23,6 +23,8 @@ See the Mulan PSL v2 for more details. */
 #include "common/log/log.h"
 
 class Tuple;
+class ProjectPhysicalOperator;
+class PhysicalOperator;
 
 /**
  * @defgroup Expression
@@ -182,7 +184,7 @@ public:
     return ExprType::CAST;
   }
   RC get_value(const Tuple &tuple, Value &value) const override;
-  RC get_value(Trx *trx, const Tuple &tuple, Value &value) override {return get_value(tuple,value);}
+  RC get_value(Trx *trx, const Tuple &tuple, Value &value) override;
   RC try_get_value(Value &value) const override;
 
   AttrType value_type() const override { return cast_type_; }
@@ -271,4 +273,40 @@ private:
   Type arithmetic_type_;
   std::unique_ptr<Expression> left_;
   std::unique_ptr<Expression> right_;
+};
+
+/**
+ * @brief 子查询表达式
+ * @ingroup Expression
+ */
+class SubQueryExpr : public Expression
+{
+public:
+  SubQueryExpr(std::unique_ptr<PhysicalOperator> *sub_opt) : sub_opt_(sub_opt) {}
+
+  SubQueryExpr(std::vector<Value> values) {
+    values_ = values;
+    set_cached();
+  }
+  virtual ~SubQueryExpr() = default;
+
+  ExprType type() const override { return ExprType::SUB_QUERY; }
+
+  AttrType value_type() const override { return AttrType::NULLS; }
+
+  RC get_value(const Tuple &tuple, Value &value) const override{return RC::UNIMPLENMENT;};
+  RC get_value(Trx *trx, const Tuple &tuple, Value &value);
+
+  // 如果子查询是一个数值列表，则直接在这里返回
+  RC try_get_value(Value &value) const override;
+
+  void reset() { cur_index_ = 0; }
+  void set_cached() { cached_ = true; }
+
+private:
+  // 子查询算子
+  std::unique_ptr<PhysicalOperator> *sub_opt_;
+  bool                     cached_    = false;  // 子查询是否已经执行完毕
+  int                      cur_index_ = 0;
+  std::vector<Value>       values_; // in列表或者子查询的结果存在这里
 };

@@ -849,7 +849,6 @@ condition:
         $$->comp = $2;
 
         delete $1;
-        delete $4;
       }
     | value sub_comp_op LBRACE select_stmt RBRACE
       {
@@ -861,7 +860,6 @@ condition:
         $$->comp = $2;
 
         delete $1;
-        delete $4;
       }
     | exists LBRACE select_stmt RBRACE
     {
@@ -871,7 +869,6 @@ condition:
       $$->right_sub_selection = $3;
       $$->comp = $1;
 
-      delete $3;
     }
     | rel_attr comp_op value
     {

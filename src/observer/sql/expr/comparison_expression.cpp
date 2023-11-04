@@ -3,7 +3,6 @@
 //
 
 #include "comparison_expression.h"
-#include "sub_query_expression.h"
 
 using namespace std;
 
@@ -12,6 +11,13 @@ ComparisonExpr::ComparisonExpr(CompOp comp, unique_ptr<Expression> left, unique_
   comp_ = comp;
   //  类型相同不用转
   if(left->value_type() == right->value_type()){
+    left_ = std::move(left);
+    right_ = std::move(right);
+    return;
+  }
+
+  // 子查询暂时不转
+  if(left->type() == ExprType::SUB_QUERY || right->type() == ExprType::SUB_QUERY){
     left_ = std::move(left);
     right_ = std::move(right);
     return;
@@ -183,11 +189,8 @@ RC ComparisonExpr::get_value(Trx *trx, const Tuple &tuple, Value &value)
     }
     bool in = false;
     while ((rc = right_->get_value(trx, tuple, right_value)) == RC::SUCCESS) {
-      rc = compare_value(left_value, right_value, in);
-      if (rc != RC::SUCCESS) {
-        LOG_WARN("failed to get value of right expression. rc=%s", strrc(rc));
-      }
-      if (in) {
+      if(left_value.compare(right_value) == 0){
+        in = true;
         break;
       }
     }
@@ -195,7 +198,7 @@ RC ComparisonExpr::get_value(Trx *trx, const Tuple &tuple, Value &value)
     if (left_->type() == ExprType::SUB_QUERY) {
       static_cast<SubQueryExpr *>(left_.get())->reset();  // 重置子查询
     }
-    static_cast<SubQueryExpr *>(right_.get())->reset();  // 重置子查询
+    static_cast<SubQueryExpr *>(right_.get())->reset();  // 重置子查询,下次查询就可以从头开始
     return RC::SUCCESS;
   }
 
@@ -222,5 +225,5 @@ RC ComparisonExpr::get_value(Trx *trx, const Tuple &tuple, Value &value)
   if (right_->type() == ExprType::SUB_QUERY) {
     static_cast<SubQueryExpr *>(right_.get())->reset();  // 重置子查询
   }
-  return RC::INVALID_ARGUMENT;
+  return rc;
 }
