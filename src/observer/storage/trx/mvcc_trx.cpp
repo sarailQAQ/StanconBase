@@ -199,32 +199,43 @@ RC MvccTrx::update_record(Table *table, Record &record, const FieldMeta* fieldMe
 }
 
 RC MvccTrx::update_record(Table *table, Record &record, std::vector<const FieldMeta* >fieldMeta, std::vector<int> idxs, std::vector<Value> &values) {
-  Record old_rec;
+  int len = table->table_meta().record_size();
+  int bitmap_len = table->table_meta().field_metas()->at(0).offset();
 
   bool is_same = true;
+  auto bitmap = common::Bitmap(record.data(), bitmap_len);
   for (int i = 0; i < fieldMeta.size(); i++) {
-    auto &field_meta = fieldMeta[i];
+    auto& field_meta = fieldMeta[i];
+    auto& idx = idxs[i];
     auto& value = values[i];
 
-    if (memcmp(record.data()+field_meta->offset(), value.data(), field_meta->len()) != 0) {
+    bool is_null = bitmap.get_bit(idx);
+    if (!(is_null && value.attr_type() == AttrType::NULLS) ||
+        memcmp(record.data()+field_meta->offset(), value.data(), field_meta->len()) != 0) {
       is_same = false;
       break;
     }
   }
   if (is_same) return RC::SUCCESS;
 
-  int len = table->table_meta().record_size();
-
-  char *data = (char *)malloc(record.len());
-  memmove(data, record.data(), record.len());
-  old_rec.set_data_owner(data, len, record.bitmap_len());
+  Record old_rec;
+  char *data = (char *)malloc(len);
+  memmove(data, record.data(), len);
+  old_rec.set_data_owner(data, len, bitmap_len);
   old_rec.set_rid({-1,-1});
 
   delete_record(table, record);
 
   for (int i = 0; i < fieldMeta.size(); i++) {
     auto &field_meta = fieldMeta[i];
+    auto& idx = idxs[i];
     auto& value = values[i];
+
+    if (value.attr_type() == NULLS) {
+      bitmap.set_bit(idx);
+    } else {
+      bitmap.clear_bit(idx);
+    }
 
     memmove(old_rec.data()+field_meta->offset(), value.data(), field_meta->len());
   }
