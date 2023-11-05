@@ -322,3 +322,4 @@ RC SubQueryExpr::get_value(Trx *trx, const Tuple &tuple, Value &value)
 }
 
 RC       SubQueryExpr::try_get_value(Value &value) const { return RC::UNIMPLENMENT; }
+int SubQueryExpr::res_size() { return values_.size(); }

@@ -186,7 +186,19 @@ RC PlainCommunicator::write_result_internal(SessionEvent *event, bool &need_disc
   const TupleSchema &schema = sql_result->tuple_schema();
   const int cell_num = schema.cell_num();
 
-//  绘制表头
+  rc = RC::SUCCESS;
+  Tuple *tuple = nullptr;
+  // 直接操作第一跳语句，如果失败直接返回，避免打印了表头后才报失败
+  rc = sql_result->next_tuple(tuple);
+  if(rc != RC::RECORD_EOF && rc != RC::SUCCESS){
+    const char *res = "FAILURE\n";
+    writer_->writen(res, strlen(res));
+    sql_result->close();
+    LOG_WARN("查询失败");
+    return rc;
+  }
+
+  //  绘制表头
   for (int i = 0; i < cell_num; i++) {
     const TupleCellSpec &spec = schema.cell_at(i);
     const char *alias = spec.alias();
@@ -209,7 +221,6 @@ RC PlainCommunicator::write_result_internal(SessionEvent *event, bool &need_disc
       }
     }
   }
-
   if (cell_num > 0) {
     char newline = '\n';
     rc = writer_->writen(&newline, 1);
@@ -220,12 +231,13 @@ RC PlainCommunicator::write_result_internal(SessionEvent *event, bool &need_disc
     }
   }
 
-  rc = RC::SUCCESS;
-  Tuple *tuple = nullptr;
 //  开始操作（查询、更新等）每一行数据
   int i = 0;
-  while (RC::SUCCESS == (rc = sql_result->next_tuple(tuple))) {
-    assert(tuple != nullptr);
+  do {
+    if(tuple == nullptr){
+      break;
+    }
+//    assert(tuple != nullptr);
 
     int cell_num = tuple->cell_num();
     for (int i = 0; i < cell_num; i++) {
@@ -267,7 +279,7 @@ RC PlainCommunicator::write_result_internal(SessionEvent *event, bool &need_disc
       // 批量提前打印结果，节约内存
       writer_->flush();
     }
-  }
+  } while (RC::SUCCESS == (rc = sql_result->next_tuple(tuple)));
 
   if (rc == RC::RECORD_EOF) {
     rc = RC::SUCCESS;

@@ -228,10 +228,18 @@ RC ComparisonExpr::get_value(Trx *trx, const Tuple &tuple, Value &value)
     value.set_boolean(bool_value);
   }
   if (left_->type() == ExprType::SUB_QUERY) {
-    static_cast<SubQueryExpr *>(left_.get())->reset();  // 重置子查询
+    auto sub_expr = static_cast<SubQueryExpr *>(left_.get());
+    if(sub_expr->res_size()>1){
+      return RC::INVALID_ARGUMENT;
+    }
+    sub_expr->reset();  // 重置子查询
   }
   if (right_->type() == ExprType::SUB_QUERY) {
-    static_cast<SubQueryExpr *>(right_.get())->reset();  // 重置子查询
+    auto sub_expr = static_cast<SubQueryExpr *>(right_.get());
+    if(sub_expr->res_size()>1){
+      return RC::INVALID_ARGUMENT;
+    }
+    sub_expr->reset();  // 重置子查询
   }
   return rc;
 }

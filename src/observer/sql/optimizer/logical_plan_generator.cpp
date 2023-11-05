@@ -205,6 +205,7 @@ RC LogicalPlanGenerator::create_plan(SelectStmt *select_stmt, unique_ptr<Logical
 
 RC LogicalPlanGenerator::create_expr(FilterStmt *filter_stmt, unique_ptr<ConjunctionExpr> &conjunction_expr)
 {
+  RC rc = RC::SUCCESS;
   // 创建比较表达式
   std::vector<unique_ptr<Expression>> cmp_exprs;
   const std::vector<FilterUnit *>    &filter_units = filter_stmt->filter_units();
@@ -270,32 +271,10 @@ RC LogicalPlanGenerator::create_expr(FilterStmt *filter_stmt, unique_ptr<Conjunc
     unique_ptr<Expression> right(right_expr);
 
     // 子查询 语法校验
-    // 1. in 多个字段
-    if (filter_unit->comp() == CompOp::IN || filter_unit->comp() == CompOp::NOT_IN) {
-      ASSERT(right->type() == ExprType::SUB_QUERY, "right expr must be sub query");
-      auto expr = static_cast<SubQueryExpr *>(right.get());
-      if (!expr->cached()) {
-        ProjectPhysicalOperator *phy_opt = reinterpret_cast<ProjectPhysicalOperator *>(expr->sub_opt()->get());
-        if (phy_opt->cell_num() > 1) {
-          LOG_WARN("in 对应的子查询必须只有一列");
-          return RC::INVALID_ARGUMENT;
-        }
-      }
-    }
-
-    // 2. 比较 多个值，比如 id = (1,2,3,4)
-    if (right->type() == ExprType::SUB_QUERY && filter_unit->comp() != CompOp::IN &&
-        filter_unit->comp() != CompOp::NOT_IN) {
-      auto expr = static_cast<SubQueryExpr *>(right.get());
-      if (!expr->cached()) {
-        ProjectPhysicalOperator *phy_opt = reinterpret_cast<ProjectPhysicalOperator *>(expr->sub_opt()->get());
-        if (!phy_opt->has_agg_func()) {
-          LOG_WARN("与子查询进行非in比较，子查询必须为聚合");
-          return RC::INVALID_ARGUMENT;
-        }
-      } else {
-        return RC::INVALID_ARGUMENT; // 子查询暂时只支持 = (select max(id) from ), 不支持 id = (1)
-      }
+    rc = verify_sub_query(filter_unit->comp(), left, right);
+    if (rc != RC::SUCCESS) {
+      LOG_WARN("子查询几考研失败");
+      return rc;
     }
 
     ComparisonExpr *cmp_expr = new ComparisonExpr(filter_unit->comp(), std::move(left), std::move(right));
@@ -310,12 +289,66 @@ RC LogicalPlanGenerator::create_expr(FilterStmt *filter_stmt, unique_ptr<Conjunc
   return RC::SUCCESS;
 }
 
+RC LogicalPlanGenerator::verify_sub_query(CompOp op, std::unique_ptr<Expression> &left, std::unique_ptr<Expression> &right)
+{
+  // 1. in 多个字段
+  if (op == CompOp::IN || op == CompOp::NOT_IN) {
+    ASSERT(right->type() == ExprType::SUB_QUERY, "right expr must be sub query");
+    auto expr = static_cast<SubQueryExpr *>(right.get());
+    if (!expr->cached()) {
+      ProjectPhysicalOperator *phy_opt = reinterpret_cast<ProjectPhysicalOperator *>(expr->sub_opt()->get());
+      if (phy_opt->cell_num() > 1) {
+        LOG_WARN("in 对应的子查询必须只有一列");
+        return RC::INVALID_ARGUMENT;
+      }
+    }
+  }
+
+  // 2. 比较 多个字段，比如 id = (1,2,3,4)
+  if (left->type() == ExprType::SUB_QUERY && op != CompOp::IN && op != CompOp::NOT_IN) {
+    auto expr = static_cast<SubQueryExpr *>(left.get());
+    if (!expr->cached()) {
+      ProjectPhysicalOperator *phy_opt = reinterpret_cast<ProjectPhysicalOperator *>(expr->sub_opt()->get());
+      if (phy_opt->cell_num() > 1) {
+        LOG_WARN("子查询不能有多字段");
+        return RC::INVALID_ARGUMENT;
+      }
+    } else {
+      if (expr->res_size() > 1) {
+        return RC::INVALID_ARGUMENT;  // 子查询暂时只支持 = (select max(id) from ), 支持 id = (1)
+      }
+    }
+  }
+  
+  if (right->type() == ExprType::SUB_QUERY && op != CompOp::IN && op != CompOp::NOT_IN) {
+    auto expr = static_cast<SubQueryExpr *>(right.get());
+    if (!expr->cached()) {
+      ProjectPhysicalOperator *phy_opt = reinterpret_cast<ProjectPhysicalOperator *>(expr->sub_opt()->get());
+      if (phy_opt->cell_num() > 1) {
+        LOG_WARN("子查询不能有多字段");
+        return RC::INVALID_ARGUMENT;
+      }
+    } else {
+      if (expr->res_size() > 1) {
+        return RC::INVALID_ARGUMENT;  // 子查询暂时只支持 = (select max(id) from ), 支持 id = (1)
+      }
+    }
+  }
+
+  // 3. (select ...) = (select ...)
+  if(left->type() == ExprType::SUB_QUERY && right->type() == ExprType::SUB_QUERY){
+    LOG_WARN("一个比较条件不能有两个子查询");
+    return RC::INVALID_ARGUMENT;
+  }
+  return RC::SUCCESS;
+}
+
 RC LogicalPlanGenerator::create_plan(FilterStmt *filter_stmt, unique_ptr<LogicalOperator> &logical_operator)
 {
-  RC rc = RC::SUCCESS;
+  RC                          rc = RC::SUCCESS;
   unique_ptr<ConjunctionExpr> conjunction_expr;
   rc = create_expr(filter_stmt, conjunction_expr);
-  if(rc != RC::SUCCESS){
+  if (rc != RC::SUCCESS) {
     return rc;
   }
   if (conjunction_expr) {

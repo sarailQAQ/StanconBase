@@ -306,6 +306,8 @@ public:
 
   std::unique_ptr<PhysicalOperator> *sub_opt() { return sub_opt_; }
 
+  int res_size();
+
 private:
   // 子查询算子
   std::unique_ptr<PhysicalOperator> *sub_opt_;
