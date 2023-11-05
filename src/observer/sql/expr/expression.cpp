@@ -301,6 +301,7 @@ RC SubQueryExpr::get_value(Trx *trx, const Tuple &tuple, Value &value)
       Value tmp_value;
       tmp_tuple->cell_at(0, tmp_value);  // 只要第一个
       values_.emplace_back(tmp_value);
+      has_multi_res_ = tmp_tuple->cell_num() > 1;
     }
     sub_opt_->get()->close();
     set_cached();

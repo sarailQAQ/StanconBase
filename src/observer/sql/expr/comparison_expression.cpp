@@ -181,6 +181,7 @@ RC ComparisonExpr::get_value(Trx *trx, const Tuple &tuple, Value &value)
 
   // 2. (not) in
   if (comp_ == IN || comp_ == NOT_IN) {
+    ASSERT(left_->type() == ExprType::VALUE ||left_->type() == ExprType::FIELD , "left exp must be value or field");
     ASSERT(right_->type() == ExprType::SUB_QUERY, "right exp must be SUB_QUERY");
     rc = left_->get_value(trx, tuple, left_value);
     if (rc != RC::SUCCESS) {
@@ -194,6 +195,13 @@ RC ComparisonExpr::get_value(Trx *trx, const Tuple &tuple, Value &value)
         break;
       }
     }
+
+    // 如果子查询有多个表达式直接返回错误,（目前的逻辑要在子查询执行完毕后判断）
+    if(static_cast<SubQueryExpr *>(left_.get())->has_multi_res()){
+      LOG_WARN("not support multi field for sub-query");
+      return RC::INVALID_ARGUMENT;
+    }
+
     value.set_boolean(comp_ == IN ? in : !in);
     if (left_->type() == ExprType::SUB_QUERY) {
       static_cast<SubQueryExpr *>(left_.get())->reset();  // 重置子查询

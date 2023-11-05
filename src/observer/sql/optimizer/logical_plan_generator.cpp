@@ -214,22 +214,46 @@ RC LogicalPlanGenerator::create_expr(FilterStmt *filter_stmt, unique_ptr<Conjunc
     // 创建左右表达式
 
     // 左值暂时不支持 列表和子查询
-    unique_ptr<Expression> left(filter_obj_left.type == ATTR
-                                    ? static_cast<Expression *>(new FieldExpr(filter_obj_left.field))
-                                    : static_cast<Expression *>(new ValueExpr(filter_obj_left.value)));
-
+//    unique_ptr<Expression> left(filter_obj_left.type == ATTR
+//                                    ? static_cast<Expression *>(new FieldExpr(filter_obj_left.field))
+//                                    : static_cast<Expression *>(new ValueExpr(filter_obj_left.value)));
+    
+    Expression *left_expr;
+    switch (filter_obj_left.type) {
+      case VALUE:{
+        left_expr = static_cast<Expression *>(new ValueExpr(filter_obj_left.value));
+      } break;
+      case ATTR:{
+        left_expr = static_cast<Expression *>(new FieldExpr(filter_obj_left.field));
+      } break;
+      case VALUE_LIST:{
+        left_expr = static_cast<Expression *>(new SubQueryExpr(filter_obj_left.value_list));
+      } break;
+      case SUB_QUERY: {
+        // fake_event 模拟查询stmt 构造物理算子的过程
+        OptimizeStage optimize_stage;
+        auto fake_event = new SQLStageEvent(filter_obj_left.sub_query);
+        optimize_stage.handle_request(fake_event);
+        left_expr = static_cast<Expression *>(new SubQueryExpr(&fake_event->physical_operator()));
+      } break;
+      default:{
+        LOG_WARN("not support filter_obj type");
+        return RC::INVALID_ARGUMENT;
+      }
+    }
+    
     Expression *right_expr;
     switch (filter_obj_right.type) {
       case VALUE:{
         right_expr = static_cast<Expression *>(new ValueExpr(filter_obj_right.value));
       } break;
       case ATTR:{
-        right_expr = static_cast<Expression *>(new ValueExpr(filter_obj_right.value));
+        right_expr = static_cast<Expression *>(new FieldExpr(filter_obj_right.field));
       } break;
       case VALUE_LIST:{
         right_expr = static_cast<Expression *>(new SubQueryExpr(filter_obj_right.value_list));
       } break;
-      case SUB_QUERY:{
+      case SUB_QUERY: {
         // fake_event 模拟查询stmt 构造物理算子的过程
         OptimizeStage optimize_stage;
         auto fake_event = new SQLStageEvent(filter_obj_right.sub_query);
@@ -242,6 +266,7 @@ RC LogicalPlanGenerator::create_expr(FilterStmt *filter_stmt, unique_ptr<Conjunc
       }
     }
 
+    unique_ptr<Expression> left(left_expr);
     unique_ptr<Expression> right(right_expr);
 
     ComparisonExpr *cmp_expr = new ComparisonExpr(filter_unit->comp(), std::move(left), std::move(right));

@@ -287,6 +287,7 @@ public:
   SubQueryExpr(std::vector<Value> values) {
     values_ = values;
     set_cached();
+    has_multi_res_ = values.size() > 1;
   }
   virtual ~SubQueryExpr() = default;
 
@@ -302,11 +303,13 @@ public:
 
   void reset() { cur_index_ = 0; }
   void set_cached() { cached_ = true; }
-
+  bool has_multi_res(){return has_multi_res_;}
 private:
   // 子查询算子
   std::unique_ptr<PhysicalOperator> *sub_opt_;
   bool                     cached_    = false;  // 子查询是否已经执行完毕
   int                      cur_index_ = 0;
   std::vector<Value>       values_; // in列表或者子查询的结果存在这里
+
+  bool has_multi_res_ = false; // 子查询的几个是否有多个值，如果有的话，只允许exist比较符，其他比较都要报错
 };
