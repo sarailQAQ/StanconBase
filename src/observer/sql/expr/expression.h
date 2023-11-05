@@ -45,7 +45,7 @@ enum class ExprType
   COMPARISON,   ///< 需要做比较的表达式
   CONJUNCTION,  ///< 多个表达式使用同一种关系(AND或OR)来联结
   ARITHMETIC,   ///< 算术运算
-  SUB_QUERY,   ///< 子查询运算
+  SUB_QUERY,    ///< 子查询运算
   VALUE_LIST,   ///< 子查询运算
 };
 
@@ -63,7 +63,7 @@ enum class ExprType
 class Expression
 {
 public:
-  Expression() = default;
+  Expression()          = default;
   virtual ~Expression() = default;
 
   /**
@@ -80,10 +80,7 @@ public:
    * @brief 在没有实际运行的情况下，也就是无法获取tuple的情况下，尝试获取表达式的值
    * @details 有些表达式的值是固定的，比如ValueExpr，这种情况下可以直接获取值
    */
-  virtual RC try_get_value(Value &value) const
-  {
-    return RC::UNIMPLENMENT;
-  }
+  virtual RC try_get_value(Value &value) const { return RC::UNIMPLENMENT; }
 
   /**
    * @brief 表达式的类型
@@ -101,10 +98,10 @@ public:
    * @brief 表达式的名字，比如是字段名称，或者用户在执行SQL语句时输入的内容
    */
   virtual std::string name() const { return name_; }
-  virtual void set_name(std::string name) { name_ = name; }
+  virtual void        set_name(std::string name) { name_ = name; }
 
 private:
-  std::string  name_;
+  std::string name_;
 };
 
 /**
@@ -115,10 +112,8 @@ class FieldExpr : public Expression
 {
 public:
   FieldExpr() = default;
-  FieldExpr(const Table *table, const FieldMeta *field) : field_(table, field)
-  {}
-  FieldExpr(const Field &field) : field_(field)
-  {}
+  FieldExpr(const Table *table, const FieldMeta *field) : field_(table, field) {}
+  FieldExpr(const Field &field) : field_(field) {}
 
   virtual ~FieldExpr() = default;
 
@@ -134,7 +129,7 @@ public:
   const char *field_name() const { return field_.field_name(); }
 
   RC get_value(const Tuple &tuple, Value &value) const override;
-  RC get_value(Trx *trx, const Tuple &tuple, Value &value) override {return get_value(tuple,value);}
+  RC get_value(Trx *trx, const Tuple &tuple, Value &value) override { return get_value(tuple, value); }
 
 private:
   Field field_;
@@ -148,14 +143,17 @@ class ValueExpr : public Expression
 {
 public:
   ValueExpr() = default;
-  explicit ValueExpr(const Value &value) : value_(value)
-  {}
+  explicit ValueExpr(const Value &value) : value_(value) {}
 
   virtual ~ValueExpr() = default;
 
   RC get_value(const Tuple &tuple, Value &value) const override;
-  RC get_value(Trx *trx, const Tuple &tuple, Value &value) override {return get_value(tuple,value);}
-  RC try_get_value(Value &value) const override { value = value_; return RC::SUCCESS; }
+  RC get_value(Trx *trx, const Tuple &tuple, Value &value) override { return get_value(tuple, value); }
+  RC try_get_value(Value &value) const override
+  {
+    value = value_;
+    return RC::SUCCESS;
+  }
 
   ExprType type() const override { return ExprType::VALUE; }
 
@@ -179,13 +177,10 @@ public:
   CastExpr(std::unique_ptr<Expression> child, AttrType cast_type);
   virtual ~CastExpr();
 
-  ExprType type() const override
-  {
-    return ExprType::CAST;
-  }
-  RC get_value(const Tuple &tuple, Value &value) const override;
-  RC get_value(Trx *trx, const Tuple &tuple, Value &value) override;
-  RC try_get_value(Value &value) const override;
+  ExprType type() const override { return ExprType::CAST; }
+  RC       get_value(const Tuple &tuple, Value &value) const override;
+  RC       get_value(Trx *trx, const Tuple &tuple, Value &value) override;
+  RC       try_get_value(Value &value) const override;
 
   AttrType value_type() const override { return cast_type_; }
 
@@ -195,8 +190,8 @@ private:
   RC cast(const Value &value, Value &cast_value) const;
 
 private:
-  std::unique_ptr<Expression> child_;  ///< 从这个表达式转换
-  AttrType cast_type_;  ///< 想要转换成这个类型
+  std::unique_ptr<Expression> child_;      ///< 从这个表达式转换
+  AttrType                    cast_type_;  ///< 想要转换成这个类型
 };
 
 /**
@@ -208,7 +203,8 @@ private:
 class ConjunctionExpr : public Expression
 {
 public:
-  enum class Type {
+  enum class Type
+  {
     AND,
     OR,
   };
@@ -229,7 +225,7 @@ public:
   std::vector<std::unique_ptr<Expression>> &children() { return children_; }
 
 private:
-  Type conjunction_type_;
+  Type                                     conjunction_type_;
   std::vector<std::unique_ptr<Expression>> children_;
 };
 
@@ -240,7 +236,8 @@ private:
 class ArithmeticExpr : public Expression
 {
 public:
-  enum class Type {
+  enum class Type
+  {
     ADD,
     SUB,
     MUL,
@@ -258,7 +255,7 @@ public:
   AttrType value_type() const override;
 
   RC get_value(const Tuple &tuple, Value &value) const override;
-  RC get_value(Trx *trx, const Tuple &tuple, Value &value) override {return get_value(tuple,value);}
+  RC get_value(Trx *trx, const Tuple &tuple, Value &value) override { return get_value(tuple, value); }
   RC try_get_value(Value &value) const override;
 
   Type arithmetic_type() const { return arithmetic_type_; }
@@ -270,7 +267,7 @@ private:
   RC calc_value(const Value &left_value, const Value &right_value, Value &value) const;
 
 private:
-  Type arithmetic_type_;
+  Type                        arithmetic_type_;
   std::unique_ptr<Expression> left_;
   std::unique_ptr<Expression> right_;
 };
@@ -284,7 +281,8 @@ class SubQueryExpr : public Expression
 public:
   SubQueryExpr(std::unique_ptr<PhysicalOperator> *sub_opt) : sub_opt_(sub_opt) {}
 
-  SubQueryExpr(std::vector<Value> values) {
+  SubQueryExpr(std::vector<Value> values)
+  {
     values_ = values;
     set_cached();
     has_multi_res_ = values.size() > 1;
@@ -295,7 +293,7 @@ public:
 
   AttrType value_type() const override { return AttrType::NULLS; }
 
-  RC get_value(const Tuple &tuple, Value &value) const override{return RC::UNIMPLENMENT;};
+  RC get_value(const Tuple &tuple, Value &value) const override { return RC::UNIMPLENMENT; };
   RC get_value(Trx *trx, const Tuple &tuple, Value &value);
 
   // 如果子查询是一个数值列表，则直接在这里返回
@@ -303,18 +301,17 @@ public:
 
   void reset() { cur_index_ = 0; }
   void set_cached() { cached_ = true; }
-  bool has_multi_res(){return has_multi_res_;}
+  bool cached() { return cached_; }
+  bool has_multi_res() { return has_multi_res_; }
 
-    std::unique_ptr<PhysicalOperator> *sub_opt(){
-    return sub_opt_;
-    }
+  std::unique_ptr<PhysicalOperator> *sub_opt() { return sub_opt_; }
 
 private:
   // 子查询算子
   std::unique_ptr<PhysicalOperator> *sub_opt_;
-  bool                     cached_    = false;  // 子查询是否已经执行完毕
-  int                      cur_index_ = 0;
-  std::vector<Value>       values_; // in列表或者子查询的结果存在这里
+  bool                               cached_    = false;  // 子查询是否已经执行完毕
+  int                                cur_index_ = 0;
+  std::vector<Value>                 values_;  // in列表或者子查询的结果存在这里
 
-  bool has_multi_res_ = false; // 子查询的几个是否有多个值，如果有的话，只允许exist比较符，其他比较都要报错
+  bool has_multi_res_ = false;  // 子查询的几个是否有多个值，如果有的话，只允许exist比较符，其他比较都要报错
 };

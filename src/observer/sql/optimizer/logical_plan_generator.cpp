@@ -274,7 +274,7 @@ RC LogicalPlanGenerator::create_expr(FilterStmt *filter_stmt, unique_ptr<Conjunc
     if (filter_unit->comp() == CompOp::IN || filter_unit->comp() == CompOp::NOT_IN) {
       ASSERT(right->type() == ExprType::SUB_QUERY, "right expr must be sub query");
       auto expr = static_cast<SubQueryExpr *>(right.get());
-      if (expr->sub_opt()) {
+      if (!expr->cached()) {
         ProjectPhysicalOperator *phy_opt = reinterpret_cast<ProjectPhysicalOperator *>(expr->sub_opt()->get());
         if (phy_opt->cell_num() > 1) {
           LOG_WARN("in 对应的子查询必须只有一列");
@@ -287,7 +287,7 @@ RC LogicalPlanGenerator::create_expr(FilterStmt *filter_stmt, unique_ptr<Conjunc
     if (right->type() == ExprType::SUB_QUERY && filter_unit->comp() != CompOp::IN &&
         filter_unit->comp() != CompOp::NOT_IN) {
       auto expr = static_cast<SubQueryExpr *>(right.get());
-      if (expr->sub_opt()) {
+      if (!expr->cached()) {
         ProjectPhysicalOperator *phy_opt = reinterpret_cast<ProjectPhysicalOperator *>(expr->sub_opt()->get());
         if (!phy_opt->has_agg_func()) {
           LOG_WARN("与子查询进行非in比较，子查询必须为聚合");
