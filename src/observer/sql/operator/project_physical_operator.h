@@ -57,6 +57,8 @@ public:
 
   Tuple *current_tuple() override;
 
+  bool has_agg_func(){return has_agg_func_;}
+
 private:
   ProjectTuple tuple_;
   bool         has_agg_func_ = false;

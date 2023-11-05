@@ -116,8 +116,8 @@ struct ConditionSqlNode
 
   Value           left_value;      ///< left-hand side value if left_is_attr = FALSE
   RelAttrSqlNode  left_attr;       ///< left-hand side attribute
-//  std::vector<Value> left_values; // 左值暂时不允许放列表和子查询
-//  ParsedSqlNode* left_sub_selection;
+//  std::vector<Value> left_values; // 左值暂时不允许放列表
+  ParsedSqlNode* left_sub_selection;
 
   CompOp          comp;            ///< comparison operator
 

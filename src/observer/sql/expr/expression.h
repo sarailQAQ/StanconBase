@@ -304,6 +304,11 @@ public:
   void reset() { cur_index_ = 0; }
   void set_cached() { cached_ = true; }
   bool has_multi_res(){return has_multi_res_;}
+
+    std::unique_ptr<PhysicalOperator> *sub_opt(){
+    return sub_opt_;
+    }
+
 private:
   // 子查询算子
   std::unique_ptr<PhysicalOperator> *sub_opt_;

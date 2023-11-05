@@ -91,21 +91,37 @@ RC FilterStmt::create_filter_unit(Db *db, Table *default_table, std::unordered_m
 
   filter_unit = new FilterUnit;
 
-  if (condition.left_type == ATTR) {
-    Table *table = nullptr;
-    const FieldMeta *field = nullptr;
-    rc = get_table_and_field(db, default_table, tables, condition.left_attr, table, field);
-    if (rc != RC::SUCCESS) {
-      LOG_WARN("cannot find attr");
-      return rc;
-    }
-    FilterObj filter_obj;
-    filter_obj.init_attr(Field(table, field));
-    filter_unit->set_left(filter_obj);
-  } else {
-    FilterObj filter_obj;
-    filter_obj.init_value(condition.left_value);
-    filter_unit->set_left(filter_obj);
+  switch (condition.left_type) {
+    case ATTR:{
+      Table *table = nullptr;
+      const FieldMeta *field = nullptr;
+      rc = get_table_and_field(db, default_table, tables, condition.left_attr, table, field);
+      if (rc != RC::SUCCESS) {
+        LOG_WARN("cannot find attr");
+        return rc;
+      }
+      FilterObj filter_obj;
+      filter_obj.init_attr(Field(table, field));
+      filter_unit->set_left(filter_obj);
+    } break;
+    case VALUE:{
+      FilterObj filter_obj;
+      filter_obj.init_value(condition.left_value);
+      filter_unit->set_left(filter_obj);
+    } break;
+//      not support
+//    case VALUE_LIST:{  
+//      FilterObj filter_obj;
+//      filter_obj.init_value_list(condition.left_values);
+//      filter_unit->set_left(filter_obj);
+//    } break;
+    case SUB_QUERY:{
+      FilterObj filter_obj;
+      Stmt *stmt;
+      SelectStmt::create(db,condition.left_sub_selection->selection,stmt);
+      filter_obj.init_sub_query(static_cast<SelectStmt*>(stmt));
+      filter_unit->set_left(filter_obj);
+    } break;
   }
 
   switch (condition.right_type) {

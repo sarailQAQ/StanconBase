@@ -26,6 +26,7 @@ See the Mulan PSL v2 for more details. */
 #include "sql/operator/delete_logical_operator.h"
 #include "sql/operator/join_logical_operator.h"
 #include "sql/operator/explain_logical_operator.h"
+#include "sql/operator/project_physical_operator.h"
 
 #include "sql/stmt/stmt.h"
 #include "sql/stmt/calc_stmt.h"
@@ -38,7 +39,6 @@ See the Mulan PSL v2 for more details. */
 #include "sql/operator/order_by_logical_operator.h"
 #include "sql/expr/comparison_expression.h"
 #include "sql/expr/expression.h"
-
 
 using namespace std;
 
@@ -191,7 +191,7 @@ RC LogicalPlanGenerator::create_plan(SelectStmt *select_stmt, unique_ptr<Logical
       order_by_types.emplace_back(item.order_type_);
       expressions.emplace_back(new FieldExpr(item));
     }
-    unique_ptr<LogicalOperator> order_oper(new OrderByLogicalOperator(std::move(expressions),order_by_types));
+    unique_ptr<LogicalOperator> order_oper(new OrderByLogicalOperator(std::move(expressions), order_by_types));
 
     // 如果有排序算子，则第一层是排序(最后执行)，然后才是映射
     order_oper->add_child(std::move(project_oper));
@@ -214,53 +214,53 @@ RC LogicalPlanGenerator::create_expr(FilterStmt *filter_stmt, unique_ptr<Conjunc
     // 创建左右表达式
 
     // 左值暂时不支持 列表和子查询
-//    unique_ptr<Expression> left(filter_obj_left.type == ATTR
-//                                    ? static_cast<Expression *>(new FieldExpr(filter_obj_left.field))
-//                                    : static_cast<Expression *>(new ValueExpr(filter_obj_left.value)));
-    
+    //    unique_ptr<Expression> left(filter_obj_left.type == ATTR
+    //                                    ? static_cast<Expression *>(new FieldExpr(filter_obj_left.field))
+    //                                    : static_cast<Expression *>(new ValueExpr(filter_obj_left.value)));
+
     Expression *left_expr;
     switch (filter_obj_left.type) {
-      case VALUE:{
+      case VALUE: {
         left_expr = static_cast<Expression *>(new ValueExpr(filter_obj_left.value));
       } break;
-      case ATTR:{
+      case ATTR: {
         left_expr = static_cast<Expression *>(new FieldExpr(filter_obj_left.field));
       } break;
-      case VALUE_LIST:{
+      case VALUE_LIST: {
         left_expr = static_cast<Expression *>(new SubQueryExpr(filter_obj_left.value_list));
       } break;
       case SUB_QUERY: {
         // fake_event 模拟查询stmt 构造物理算子的过程
         OptimizeStage optimize_stage;
-        auto fake_event = new SQLStageEvent(filter_obj_left.sub_query);
+        auto          fake_event = new SQLStageEvent(filter_obj_left.sub_query);
         optimize_stage.handle_request(fake_event);
         left_expr = static_cast<Expression *>(new SubQueryExpr(&fake_event->physical_operator()));
       } break;
-      default:{
+      default: {
         LOG_WARN("not support filter_obj type");
         return RC::INVALID_ARGUMENT;
       }
     }
-    
+
     Expression *right_expr;
     switch (filter_obj_right.type) {
-      case VALUE:{
+      case VALUE: {
         right_expr = static_cast<Expression *>(new ValueExpr(filter_obj_right.value));
       } break;
-      case ATTR:{
+      case ATTR: {
         right_expr = static_cast<Expression *>(new FieldExpr(filter_obj_right.field));
       } break;
-      case VALUE_LIST:{
+      case VALUE_LIST: {
         right_expr = static_cast<Expression *>(new SubQueryExpr(filter_obj_right.value_list));
       } break;
       case SUB_QUERY: {
         // fake_event 模拟查询stmt 构造物理算子的过程
         OptimizeStage optimize_stage;
-        auto fake_event = new SQLStageEvent(filter_obj_right.sub_query);
+        auto          fake_event = new SQLStageEvent(filter_obj_right.sub_query);
         optimize_stage.handle_request(fake_event);
         right_expr = static_cast<Expression *>(new SubQueryExpr(&fake_event->physical_operator()));
       } break;
-      default:{
+      default: {
         LOG_WARN("not support filter_obj type");
         return RC::INVALID_ARGUMENT;
       }
@@ -268,6 +268,35 @@ RC LogicalPlanGenerator::create_expr(FilterStmt *filter_stmt, unique_ptr<Conjunc
 
     unique_ptr<Expression> left(left_expr);
     unique_ptr<Expression> right(right_expr);
+
+    // 子查询 语法校验
+    // 1. in 多个字段
+    if (filter_unit->comp() == CompOp::IN || filter_unit->comp() == CompOp::NOT_IN) {
+      ASSERT(right->type() == ExprType::SUB_QUERY, "right expr must be sub query");
+      auto expr = static_cast<SubQueryExpr *>(right.get());
+      if (expr->sub_opt()) {
+        ProjectPhysicalOperator *phy_opt = reinterpret_cast<ProjectPhysicalOperator *>(expr->sub_opt()->get());
+        if (phy_opt->cell_num() > 1) {
+          LOG_WARN("in 对应的子查询必须只有一列");
+          return RC::INVALID_ARGUMENT;
+        }
+      }
+    }
+
+    // 2. 比较 多个值，比如 id = (1,2,3,4)
+    if (right->type() == ExprType::SUB_QUERY && filter_unit->comp() != CompOp::IN &&
+        filter_unit->comp() != CompOp::NOT_IN) {
+      auto expr = static_cast<SubQueryExpr *>(right.get());
+      if (expr->sub_opt()) {
+        ProjectPhysicalOperator *phy_opt = reinterpret_cast<ProjectPhysicalOperator *>(expr->sub_opt()->get());
+        if (!phy_opt->has_agg_func()) {
+          LOG_WARN("与子查询进行非in比较，子查询必须为聚合");
+          return RC::INVALID_ARGUMENT;
+        }
+      } else {
+        return RC::INVALID_ARGUMENT; // 子查询暂时只支持 = (select max(id) from ), 不支持 id = (1)
+      }
+    }
 
     ComparisonExpr *cmp_expr = new ComparisonExpr(filter_unit->comp(), std::move(left), std::move(right));
     cmp_exprs.emplace_back(cmp_expr);
@@ -283,14 +312,18 @@ RC LogicalPlanGenerator::create_expr(FilterStmt *filter_stmt, unique_ptr<Conjunc
 
 RC LogicalPlanGenerator::create_plan(FilterStmt *filter_stmt, unique_ptr<LogicalOperator> &logical_operator)
 {
+  RC rc = RC::SUCCESS;
   unique_ptr<ConjunctionExpr> conjunction_expr;
-  create_expr(filter_stmt, conjunction_expr);
+  rc = create_expr(filter_stmt, conjunction_expr);
+  if(rc != RC::SUCCESS){
+    return rc;
+  }
   if (conjunction_expr) {
     unique_ptr<PredicateLogicalOperator> predicate_oper =
         unique_ptr<PredicateLogicalOperator>(new PredicateLogicalOperator(std::move(conjunction_expr)));
     logical_operator = std::move(predicate_oper);
   }
-  return RC::SUCCESS;
+  return rc;
 }
 
 RC LogicalPlanGenerator::create_plan(InsertStmt *insert_stmt, unique_ptr<LogicalOperator> &logical_operator)

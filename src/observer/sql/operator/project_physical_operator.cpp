@@ -30,13 +30,6 @@ RC ProjectPhysicalOperator::open(Trx *trx)
     return rc;
   }
 
-  has_agg_func_ = false;
-  for (const auto &spece : tuple_.speces()) {
-    if (spece->agg_func() != AggFunc::A_NULL) {
-      has_agg_func_ = true;
-      break;
-    }
-  }
   return RC::SUCCESS;
 }
 
@@ -136,5 +129,11 @@ void ProjectPhysicalOperator::add_projection(const Field &field)
   // 对单表来说，展示的(alias) 字段总是字段名称，
   // 对多表查询来说，展示的alias 需要带表名字
   TupleCellSpec *spec = new TupleCellSpec(field.table_name(), field.meta()->name(), field.meta()->name(),field.agg_func());
+
+  if (spec->agg_func() != AggFunc::A_NULL) {
+    has_agg_func_ = true;
+  }
+
   tuple_.add_cell_spec(spec);
+
 }

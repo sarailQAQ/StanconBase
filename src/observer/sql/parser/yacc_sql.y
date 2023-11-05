@@ -861,6 +861,28 @@ condition:
 
         delete $1;
       }
+     | LBRACE select_stmt RBRACE sub_comp_op value
+        {
+          $$ = new ConditionSqlNode;
+          $$->left_type = SUB_QUERY;
+          $$->left_sub_selection = $2;
+          $$->right_type = VALUE;
+          $$->right_value = *$5;
+          $$->comp = $4;
+
+          delete $5;
+        }
+    | LBRACE select_stmt RBRACE sub_comp_op rel_attr
+      {
+        $$ = new ConditionSqlNode;
+        $$->left_type = SUB_QUERY;
+        $$->left_sub_selection = $2;
+        $$->right_type = ATTR;
+        $$->right_attr = *$5;
+        $$->comp = $4;
+
+        delete $5;
+      }
     | exists LBRACE select_stmt RBRACE
     {
       $$ = new ConditionSqlNode;
