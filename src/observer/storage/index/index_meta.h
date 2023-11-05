@@ -46,6 +46,7 @@ public:
 
   void desc(std::ostream &os) const;
 
+  bool is_unique() const { return is_unique_; }
 public:
   void to_json(Json::Value &json_value) const;
   static RC from_json(const TableMeta &table, const Json::Value &json_value, IndexMeta &index);
@@ -54,4 +55,5 @@ protected:
   std::string name_;   // index's name
   std::vector<std::string> fields_;  // field_str's name
   std::string fields_str;
+  bool is_unique_;
 };

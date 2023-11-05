@@ -148,7 +148,7 @@ public:
   virtual RC delete_record(Table *table, Record &record) = 0;
   virtual RC visit_record(Table *table, Record &record, bool readonly) = 0;
   virtual RC update_record(Table *table, Record &record, const FieldMeta* fieldMeta, int index, Value &value) = 0;
-
+  virtual RC update_record(Table *table, Record &record, std::vector<const FieldMeta* >fieldMeta, std::vector<int> index, std::vector<Value> &value) = 0;
   virtual RC start_if_need() = 0;
   virtual RC commit() = 0;
   virtual RC rollback() = 0;

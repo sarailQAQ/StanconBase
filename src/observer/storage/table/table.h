@@ -81,14 +81,16 @@ public:
    */
   RC insert_record(Record &record);
   RC delete_record(const Record &record);
-  RC update_record(Record &record, const FieldMeta* fieldMeta, int index, Value &value);
+  RC update_record(Record &record, const FieldMeta* fieldMeta, int idx, Value &value);
+  RC update_record(Table *table, Record &record, std::vector<const FieldMeta *> fieldMeta, std::vector<int> idxs,
+      std::vector<Value> &values);
   RC visit_record(const RID &rid, bool readonly, std::function<void(Record &)> visitor);
   RC get_record(const RID &rid, Record &record);
 
   RC recover_insert_record(Record &record);
 
   // TODO refactor
-  RC create_index(Trx *trx, std::vector<const FieldMeta *> field_metas, const char *index_name);
+  RC create_index(Trx *trx, std::vector<const FieldMeta *> field_metas, const char *index_name, bool is_unique);
 
   RC get_record_scanner(RecordFileScanner &scanner, Trx *trx, bool readonly);
 

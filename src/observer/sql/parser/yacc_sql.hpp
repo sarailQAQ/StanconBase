@@ -115,11 +115,12 @@ extern int yydebug;
     AVG = 316,                     /* AVG  */
     ORDER = 317,                   /* ORDER  */
     BY = 318,                      /* BY  */
-    NUMBER = 319,                  /* NUMBER  */
-    FLOAT = 320,                   /* FLOAT  */
-    ID = 321,                      /* ID  */
-    SSS = 322,                     /* SSS  */
-    UMINUS = 323                   /* UMINUS  */
+    UNIQUE = 319,                  /* UNIQUE  */
+    NUMBER = 320,                  /* NUMBER  */
+    FLOAT = 321,                   /* FLOAT  */
+    ID = 322,                      /* ID  */
+    SSS = 323,                     /* SSS  */
+    UMINUS = 324                   /* UMINUS  */
   };
   typedef enum yytokentype yytoken_kind_t;
 #endif
@@ -128,7 +129,7 @@ extern int yydebug;
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
 union YYSTYPE
 {
-#line 121 "./src/observer/sql/parser/yacc_sql.y"
+#line 122 "./src/observer/sql/parser/yacc_sql.y"
 
   ParsedSqlNode *                   sql_node;
   ConditionSqlNode *                condition;
@@ -146,6 +147,7 @@ union YYSTYPE
   std::vector<std::string> *        relation_list;
   std::vector<RelWithConditions> *  join_relation_list;
   std::vector<OrderByItem> *        order_by_item_list;
+  std::vector<UpdateSetSqlNode>*    update_set_list;
   OrderByItem *                     order_by_item;
   OrderByType                       order_type;
   char *                            string;
@@ -153,7 +155,7 @@ union YYSTYPE
   float                             floats;
   bool                              bools;
 
-#line 157 "./src/observer/sql/parser/yacc_sql.hpp"
+#line 159 "./src/observer/sql/parser/yacc_sql.hpp"
 
 };
 typedef union YYSTYPE YYSTYPE;

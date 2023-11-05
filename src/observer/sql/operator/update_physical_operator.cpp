@@ -13,27 +13,24 @@ See the Mulan PSL v2 for more details. */
 //
 
 #include "sql/operator/update_physical_operator.h"
+
+#include <utility>
 #include "sql/stmt/update_stmt.h"
 #include "storage/table/table.h"
 #include "storage/trx/trx.h"
 
 using namespace std;
 
-UpdatePhysicalOperator::UpdatePhysicalOperator(Table *table, const char * field_name, Value value)
+UpdatePhysicalOperator::UpdatePhysicalOperator(Table *table, std::vector<std::string> field_names, std::vector<Value> values)
 {
   table_ = table;
-  char *tmp = (char *)malloc(sizeof(char) * (strlen(field_name) + 1));
-  strcpy(tmp, field_name);
-  field_name_ = tmp;
 
-  value_ = value;
+  field_names_ = std::move(field_names);
+
+  values_ = std::move(values);
 }
 
-UpdatePhysicalOperator::~UpdatePhysicalOperator() {
-  if (field_name_ != nullptr) {
-    delete field_name_;
-  }
-}
+UpdatePhysicalOperator::~UpdatePhysicalOperator() = default;
 
 RC UpdatePhysicalOperator::open(Trx *trx)
 {
@@ -69,20 +66,28 @@ RC UpdatePhysicalOperator::next()
 
     RowTuple *row_tuple = static_cast<RowTuple *>(tuple);
     Record &record = row_tuple->record();
-    if (*field_name_ == 0) {
+    if (field_names_.empty() || values_.size() != field_names_.size()) {
       rc = RC::EMPTY;
       return rc;
     }
-    int index;
-    const FieldMeta* feildmeta = table_->table_meta().field(field_name_,index);
-    if (feildmeta == nullptr)
-    {
-      rc = RC::EMPTY;
-      return rc;
+
+    std::vector<int> idxs;
+    std::vector<const FieldMeta*> field_metas;
+    for (auto& field_name : field_names_) {
+      int index;
+      const FieldMeta* field_meta = table_->table_meta().field(field_name.c_str(),index);
+      if (field_meta == nullptr) {
+        rc = RC::EMPTY;
+        return rc;
+      }
+
+      field_metas.push_back(field_meta);
+      idxs.push_back(index);
     }
-    int offset = feildmeta->offset();
-    rc = trx_->update_record(table_, record, feildmeta, index, value_);
-//    rc = trx_->update_record(table_, record, value_, offset);
+
+//    int offset = field_meta->offset();
+    rc = trx_->update_record(table_, record, field_metas, idxs, values_);
+//    rc = trx_->update_record(table_, record, values_, offset);
     if (rc != RC::SUCCESS) {
       LOG_WARN("failed to delete record: %s", strrc(rc));
       return rc;
@@ -96,7 +101,7 @@ RC UpdatePhysicalOperator::next()
 //    }
 //    auto to_update_field_meta = table_->table_meta().field(field_name_);
 ////    修改记录
-//    rc = row_tuple->set_cell(to_update_field_meta,&value_);
+//    rc = row_tuple->set_cell(to_update_field_meta,&values_);
 //    if (rc != RC::SUCCESS) {
 //      LOG_WARN("failed to update record: %s", strrc(rc));
 //      return rc;
