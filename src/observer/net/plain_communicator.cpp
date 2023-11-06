@@ -191,10 +191,14 @@ RC PlainCommunicator::write_result_internal(SessionEvent *event, bool &need_disc
   // 直接操作第一跳语句，如果失败直接返回，避免打印了表头后才报失败
   rc = sql_result->next_tuple(tuple);
   if(rc != RC::RECORD_EOF && rc != RC::SUCCESS){
-    const char *res = "FAILURE\n";
-    writer_->writen(res, strlen(res));
     sql_result->close();
+    sql_result->set_return_code(rc);
     LOG_WARN("查询失败");
+    return write_state(event, need_disconnect);
+
+//    const char *res = "FAILURE\n";
+//    writer_->writen(res, strlen(res));
+    sql_result->close();
     return rc;
   }
 

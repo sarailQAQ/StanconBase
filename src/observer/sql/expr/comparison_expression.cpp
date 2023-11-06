@@ -229,14 +229,16 @@ RC ComparisonExpr::get_value(Trx *trx, const Tuple &tuple, Value &value)
   }
   if (left_->type() == ExprType::SUB_QUERY) {
     auto sub_expr = static_cast<SubQueryExpr *>(left_.get());
-    if(sub_expr->res_size()>1){
+    ASSERT(sub_expr->res_size()<=1,"sub-query result size must be 1");
+    if(sub_expr->res_size() > 1){
       return RC::INVALID_ARGUMENT;
     }
     sub_expr->reset();  // 重置子查询
   }
   if (right_->type() == ExprType::SUB_QUERY) {
     auto sub_expr = static_cast<SubQueryExpr *>(right_.get());
-    if(sub_expr->res_size()>1){
+//    ASSERT(sub_expr->res_size()<=1,"sub-query result size must be 1");
+    if(sub_expr->res_size() > 1){
       return RC::INVALID_ARGUMENT;
     }
     sub_expr->reset();  // 重置子查询
